@@ -4,7 +4,7 @@
 **Bounded Context:** BC-02 (Gestión de Perfiles — lado comercial)
 **HU cubiertas:** HU-005 · HU-006
 
-Sprint bisagra entre el producto para tutores (Sprints 1-3) y el marketplace (Sprint 5). Sin un Proveedor aprobado en el sistema, Sprint 5 no puede funcionar. Es el sprint con mayor dependencia de una decisión de negocio externa: GAP-005 (flujo de aprobación de Proveedores).
+Sprint bisagra entre el producto para tutores (Sprints 1-3) y el marketplace (Sprint 5). Sin un Proveedor aprobado en el sistema, Sprint 5 no puede funcionar. La aprobación de Proveedores la realiza el Admin mediante **HU-020** (GAP-005 resuelto por RFC-003); este sprint depende de que el Módulo de Administración (HU-018 + HU-020) esté operativo.
 
 ---
 
@@ -43,7 +43,7 @@ Sprint bisagra entre el producto para tutores (Sprints 1-3) y el marketplace (Sp
 
 | GAP | Descripción | Decisión provisional |
 |---|---|---|
-| GAP-005 | Sin HU de Admin para aprobación de Proveedores | Implementar `onboarding_status = 'pending'` al registrarse. Activación manual por el equipo admin vía Supabase Studio. No construir panel admin en este sprint. |
+| GAP-005 | ✅ Resuelto por RFC-003 | La aprobación de Proveedores es HU-020 del Módulo de Administración. El Admin aprueba/rechaza desde `/admin/proveedores` y la acción se registra en `admin_audit_log`. HU-018 y HU-020 deben estar operativos para este sprint. |
 | GAP-003 | Mecanismo de verificación de servicio sin definir | Solicitar: nombre legal, CUIT (opcional), descripción del servicio. Sin validación automática. El admin revisa manualmente. |
 | GAP-013 | Ambigüedad `radius_km` vs `service_areas` en HU-016 | Usar `service_areas` con polígono/radio PostGIS. `radius_km` en `providers` es campo legacy, no se usa en Sprint 5. |
 | GAP-016 | Excepciones y concurrencia en grilla de horarios | Implementar grilla semanal simple (día de semana + hora inicio/fin + duración de slot). Excepciones de festivos quedan como Fase 2. |
@@ -53,7 +53,7 @@ Sprint bisagra entre el producto para tutores (Sprints 1-3) y el marketplace (Sp
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |---|---|---|---|
 | Onboarding Mercado Pago (RN-002) requiere cuenta MLC real | Alta | Alto — ningún Proveedor puede completar el registro sin ella | Crear flujo de onboarding con placeholder. El `onboarding_status` puede quedar en `mp_pending` sin bloquear Sprint 5 en staging. |
-| GAP-005: sin panel admin, los Proveedores no pueden ser aprobados | Alta | Alto — Sprint 5 no tiene datos con qué probar | Establecer un Proveedor de prueba aprobado manualmente vía SQL antes de iniciar Sprint 5. |
+| El Módulo de Administración (HU-020) no está listo al iniciar Sprint 4 | Media | Alto — Sprint 5 no tiene datos con qué probar | Priorizar HU-018 + HU-020 (ver `docs/technical-backlog.md`, Módulo de Administración). Como contingencia, aprobar un Proveedor de prueba vía SQL hasta que el panel esté operativo. |
 | Galería con fotos de gran tamaño afecta performance | Media | Medio — carga lenta en móvil | Comprimir en cliente a ≤ 1 MB antes del upload. Mostrar thumbnails en listados (usar Supabase Image Transformation si disponible). |
 | Grilla de horarios con slots solapados | Media | Alto — reservas dobles | Validar en INSERT de `bookings` (Sprint 5) que no exista otra reserva en el mismo slot. |
 
@@ -63,7 +63,7 @@ Sprint bisagra entre el producto para tutores (Sprints 1-3) y el marketplace (Sp
 
 ### 2.1 S4-01 — Registro de Proveedor (HU-005)
 
-El usuario ya tiene sesión como Tutor o viene directamente desde el registro con `role = 'provider'`.
+El usuario ya tiene sesión como Tutor o viene directamente desde el registro con el rol `provider` en `user_roles` (RFC-002).
 
 **Estado machine del Proveedor:**
 
@@ -72,7 +72,7 @@ registro
     ↓
 onboarding_status = 'pending'
     ↓
-Admin aprueba (vía Supabase Studio UPDATE)
+Admin aprueba (HU-020 · /admin/proveedores · registra en admin_audit_log)
     ↓
 onboarding_status = 'approved'
     ↓
@@ -107,10 +107,12 @@ onboarding_status = 'mp_pending' → 'active'
 }
 ```
 
-**UPDATE en `users`:**
+**Alta del rol en `user_roles` (RFC-002):**
 
 ```
-UPDATE users SET role = 'provider' WHERE id = auth.user.id
+INSERT INTO user_roles (user_id, role) VALUES (auth.user.id, 'provider')
+ON CONFLICT (user_id, role) DO NOTHING
+-- El rol 'tutor' previo (si existe) se conserva: el usuario acumula ambos roles.
 ```
 
 **Inicio de onboarding Mercado Pago (RN-002):**
@@ -275,7 +277,7 @@ DÍA 6-7
 
 - [ ] Un usuario puede registrarse como Proveedor con sus datos comerciales y zona de cobertura.
 - [ ] El estado inicial es `pending` y el Proveedor ve un banner de "En revisión".
-- [ ] El equipo admin puede activar el Proveedor vía Supabase Studio (UPDATE manual).
+- [ ] El Admin puede aprobar/rechazar el Proveedor desde `/admin/proveedores` (HU-020), con registro en `admin_audit_log`.
 - [ ] Un Proveedor activo puede acceder al flujo de onboarding de Mercado Pago (sandbox).
 - [ ] El Proveedor puede subir hasta 10 fotos de galería y reordenarlas.
 - [ ] El sistema rechaza la foto 11 con mensaje de error claro.

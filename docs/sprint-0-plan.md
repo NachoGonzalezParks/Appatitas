@@ -79,7 +79,7 @@ Sprint 0 no pertenece a ningún Bounded Context de negocio. Es la capa de infrae
 | GAP-014: política de RLS no documentada | Alta | Alto — el esquema se crea sin RLS, exponiendo datos en staging | Crear el esquema con RLS en modo permisivo (allow all) explícito y documentado. Nunca en producción sin políticas definidas. |
 | Dominio de email no verificado en Resend bloquea envíos | Media | Alto — bloquea HU-001 (verificación de cuenta) | Iniciar verificación del dominio en Resend desde día 1. El proceso DNS puede tardar hasta 48 horas. |
 | Dependencia de orden en la creación de tablas (FKs) | Media | Medio — un orden incorrecto genera error de FK | Ejecutar migraciones en el orden estricto definido en S0-02. |
-| Nombre del bucket de avatars de Tutor no especificado en SDD | Media | Bajo — decisión pendiente antes de S0-05 | Definir el nombre antes de crear los buckets. Propuesta de nombre: `avatars`. Requiere confirmación del equipo. |
+| Nombre del bucket de avatars de Tutor | Resuelto | — | **Resuelto por RFC-001:** el bucket se llama `avatars` y queda en el corpus. HU-002 requiere el avatar del Tutor. |
 
 ---
 
@@ -139,12 +139,17 @@ Depende de: Supabase Auth (UUID como PK provisto por Auth).
 |---|---|---|---|
 | `id` | `uuid` | PK — mismo UUID que `auth.users` | HU-001 |
 | `email` | `text` | NOT NULL, UNIQUE | RN-005 |
-| `role` | `text` | NOT NULL, CHECK IN ('tutor','provider','admin') | HU-001, HU-005 |
 | `email_verified` | `boolean` | NOT NULL, default `false` | RN-004 |
+| `full_name` | `text` | NULLABLE | RFC-001, HU-002 |
+| `phone` | `text` | NULLABLE | RFC-001, HU-002 |
+| `avatar_url` | `text` | NULLABLE | RFC-001, HU-002 |
+| `location_id` | `uuid` | NULLABLE, FK → `locations.id` | RFC-001, HU-002, HU-016 |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` | database.md |
 | `updated_at` | `timestamptz` | NOT NULL, default `now()` | database.md |
 
-**Nota GAP-004:** el campo `role` es un valor único por usuario. El SDD no documenta roles múltiples. Se implementa como campo escalar según el SDD v1.1.
+**Nota RFC-002 (GAP-004):** `users` **no** tiene columna `role`. Los roles del usuario viven en `user_roles` (orden 13), permitiendo roles múltiples (`tutor` + `provider`). El trigger de Auth inserta en `users` y en `user_roles`.
+
+**Nota RFC-001:** las cuatro columnas de perfil del Tutor son NULLABLE para no romper el INSERT del trigger de Auth (que solo dispone de `id` y `email`). `location_id` referencia `locations`, por lo que esta migración debe ejecutarse después de `0001_create_locations.sql`.
 
 ---
 
@@ -188,6 +193,7 @@ Depende de: `users`, `locations`.
 | `billing_email` | `text` | NULLABLE | SDD v1.1 |
 | `payout_method` | `text` | NULLABLE | SDD v1.1 |
 | `rating_avg` | `numeric(3,2)` | NULLABLE | HU-016, GAP-008 |
+| `verified` | `boolean` | NOT NULL, default `false` | RN-021, HU-020 (sello "Verificado") |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` | database.md |
 | `updated_at` | `timestamptz` | NOT NULL, default `now()` | database.md |
 
@@ -214,7 +220,7 @@ Depende de: `providers`.
 |---|---|---|---|
 | `id` | `uuid` | PK, default `gen_random_uuid()` | database.md |
 | `provider_id` | `uuid` | NOT NULL, FK → `providers.id` | HU-006 |
-| `day_of_week` | `integer` | NOT NULL, CHECK BETWEEN 0 AND 6 | HU-006, RN-018 |
+| `day_of_week` | `integer` | NOT NULL, CHECK BETWEEN 0 AND 6 (0 = domingo … 6 = sábado, convención `EXTRACT(DOW)`) | HU-006, RN-018 |
 | `is_closed` | `boolean` | NOT NULL, default `false` | HU-006 |
 | `blocks` | `jsonb` | NULLABLE | HU-006, RN-018 |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` | database.md |
@@ -321,6 +327,53 @@ Depende de: `bookings`, `users`.
 
 ---
 
+#### Orden 12 — `push_subscriptions`
+Depende de: `users`. Tabla agregada por RFC-001.
+
+| Columna | Tipo | Restricciones | Origen SDD |
+|---|---|---|---|
+| `id` | `uuid` | PK, default `gen_random_uuid()` | RFC-001 |
+| `user_id` | `uuid` | NOT NULL, FK → `users.id` | RFC-001 |
+| `endpoint` | `text` | NOT NULL, UNIQUE | RFC-001 |
+| `p256dh` | `text` | NOT NULL | RFC-001 |
+| `auth` | `text` | NOT NULL | RFC-001 |
+| `user_agent` | `text` | NULLABLE | RFC-001 |
+| `created_at` | `timestamptz` | NOT NULL, default `now()` | RFC-001 |
+
+**Nota RFC-001:** almacena la suscripción Web Push completa por dispositivo (relación 1:N con `users`). Es la fuente de los envíos push de HU-009, HU-012 y HU-014, reemplazando la referencia a `users.push_token` de los diagramas. Requiere RLS: cada usuario solo gestiona sus propias suscripciones.
+
+---
+
+#### Orden 13 — `user_roles`
+Depende de: `users`. Tabla agregada por RFC-002 (resuelve GAP-004).
+
+| Columna | Tipo | Restricciones | Origen SDD |
+|---|---|---|---|
+| `user_id` | `uuid` | NOT NULL, FK → `users.id`, parte de PK | RFC-002 |
+| `role` | `text` | NOT NULL, CHECK IN ('tutor','provider','admin'), parte de PK | RFC-002 |
+| `created_at` | `timestamptz` | NOT NULL, default `now()` | RFC-002 |
+
+**Nota RFC-002:** PRIMARY KEY (`user_id`, `role`). Reemplaza la columna escalar `users.role`. El trigger de Auth inserta aquí el rol elegido en el onboarding. El rol `admin` se asigna solo manualmente (RFC-003). La RLS usa la función `has_role(uid, r)` sobre esta tabla.
+
+---
+
+#### Orden 14 — `admin_audit_log`
+Depende de: `users`. Tabla agregada por RFC-003 (resuelve GAP-005).
+
+| Columna | Tipo | Restricciones | Origen SDD |
+|---|---|---|---|
+| `id` | `uuid` | PK, default `gen_random_uuid()` | RFC-003 |
+| `admin_id` | `uuid` | NOT NULL, FK → `users.id` | RFC-003 |
+| `action` | `text` | NOT NULL | RFC-003 |
+| `target_table` | `text` | NOT NULL | RFC-003 |
+| `target_id` | `uuid` | NOT NULL | RFC-003 |
+| `metadata` | `jsonb` | NULLABLE | RFC-003 |
+| `created_at` | `timestamptz` | NOT NULL, default `now()` | RFC-003 |
+
+**Nota RFC-003:** tabla inmutable (solo INSERT). Registra cada acción sensible del Admin (HU-020 aprobación de Proveedores, HU-021 moderación, HU-018 asignación de rol). RLS: solo INSERT; lectura restringida a `admin`.
+
+---
+
 ### 2.3 Supabase Auth — Configuración (S0-04)
 
 **Proveedores a habilitar:**
@@ -331,7 +384,7 @@ Depende de: `bookings`, `users`.
 | Google OAuth 2.0 | Client ID + Client Secret de Google Cloud Console | HU-001 | Disponible de inmediato |
 | Facebook OAuth 2.0 | App ID + App Secret de Meta Developers | HU-001 | Requiere revisión de Meta — iniciar día 1 |
 
-**Trigger en Auth:** al crear un usuario en `auth.users`, insertar automáticamente en `public.users` con el `role` seleccionado en el formulario de onboarding.
+**Trigger en Auth:** al crear un usuario en `auth.users`, insertar automáticamente en `public.users` y en `user_roles` con el rol seleccionado en el formulario de onboarding (RFC-002). El rol `admin` nunca se asigna por esta vía.
 
 **SMTP personalizado:** configurar Resend como proveedor SMTP en Supabase Auth para los emails de verificación (S0-07 debe estar listo primero).
 
@@ -344,7 +397,7 @@ Depende de: `bookings`, `users`.
 | `health-records` | Privado | Solo Tutor propietario de la mascota | Solo Tutor propietario de la mascota | HU-010 |
 | `avatars` | Público | Público | Solo el propio usuario | HU-002 |
 
-**Nota:** el nombre del bucket de avatars no está en el SDD (GAP sin número). Se propone `avatars`. Requiere confirmación del equipo antes de S0-05.
+**Nota:** el bucket `avatars` queda confirmado por RFC-001 (HU-002 requiere avatar del Tutor). Ya no es una decisión pendiente.
 
 ### 2.5 PWA — Scaffold (S0-06)
 
@@ -417,7 +470,7 @@ appatitas/
 │   │
 │   ├── migrations/                      # Migraciones SQL en orden estricto
 │   │   ├── 0001_create_locations.sql    # S0-02 — orden 1
-│   │   ├── 0002_create_users.sql        # S0-02 — orden 2
+│   │   ├── 0002_create_users.sql        # S0-02 — orden 2 (incluye perfil Tutor · RFC-001)
 │   │   ├── 0003_create_pets.sql         # S0-02 — orden 3
 │   │   ├── 0004_create_providers.sql    # S0-02 — orden 4
 │   │   ├── 0005_create_service_areas.sql# S0-02 — orden 5
@@ -427,7 +480,10 @@ appatitas/
 │   │   ├── 0009_create_lost_reports.sql # S0-02 — orden 9
 │   │   ├── 0010_create_bookings.sql     # S0-02 — orden 10
 │   │   ├── 0011_create_booking_status_events.sql # S0-02 — orden 11
-│   │   └── 0012_create_gist_index.sql   # S0-03 — índice espacial
+│   │   ├── 0012_create_gist_index.sql   # S0-03 — índice espacial
+│   │   ├── 0013_create_push_subscriptions.sql # S0-02 — orden 12 · RFC-001
+│   │   ├── 0014_create_user_roles.sql   # S0-02 — orden 13 · RFC-002
+│   │   └── 0015_create_admin_audit_log.sql # S0-02 — orden 14 · RFC-003
 │   │
 │   ├── functions/                       # Edge Functions (Deno)
 │   │   ├── _shared/                     # Código compartido entre funciones
@@ -567,50 +623,54 @@ appatitas/
 
 ### 4.1 Secuencia de ejecución dentro del Sprint 0
 
-El sprint tiene duración de 1 semana. Las tareas se dividen en dos carriles paralelos que convergen al final.
+El sprint tiene duración de 1 semana. El equipo es de **3 desarrolladores**, por lo que el trabajo se reparte en **tres carriles** (no dos), asignados a roles explícitos para evitar el desbalance y los puntos únicos de falla detectados en la revisión pre-Sprint 0:
+
+- **Dev 1 — Datos:** S0-01 (proyecto Supabase) + S0-02 (migraciones, incluida `push_subscriptions` de RFC-001) + S0-03 (índice GIST).
+- **Dev 2 — Frontend:** S0-06 (scaffold PWA, Service Worker, Manifest, cliente Supabase, router).
+- **Dev 3 — Plataforma:** S0-04 (Auth + trigger `users`) + S0-05 (Storage) + S0-07 (Resend) + scaffolds de Edge Functions.
+
+> **Coordinación clave:** el trigger Auth → `public.users` (Dev 3, S0-04) llena la tabla `users` que crea Dev 1 (S0-02). Ambos deben acordar el contrato de columnas (incluidas las de RFC-001) en el Día 1. El SMTP de Auth (S0-04) depende del DNS de Resend (S0-07), ambos en el carril de Dev 3: por eso Dev 3 inicia la verificación DNS el Día 1 (puede tardar 48h) y avanza el resto sin bloquearse.
 
 ```
 DÍA 1
-├── Carril A: S0-01 Crear proyecto Supabase (staging + producción)
-│             Iniciar proceso Meta (Facebook OAuth) ← no bloqueable
-│             Iniciar verificación DNS en Resend   ← DNS puede tardar 48h
-│
-└── Carril B: S0-06 Scaffold de la PWA
-              Estructura de carpetas
-              Router base con rutas públicas y privadas
-              Configurar .env.example
+├── Dev 1 (Datos):     S0-01 Crear proyecto Supabase (staging + producción)
+│                      Habilitar PostGIS, pgcrypto, uuid-ossp
+├── Dev 2 (Frontend):  S0-06 Scaffold PWA · estructura de carpetas
+│                      Router base con rutas públicas y privadas · .env.example
+└── Dev 3 (Plataforma):Iniciar proceso Meta (Facebook OAuth) ← no bloqueable
+                       Iniciar verificación DNS en Resend     ← puede tardar 48h
+                       Acordar contrato de columnas de `users` con Dev 1
 
 DÍA 2
-├── Carril A: S0-02 Migraciones 0001 → 0006
-│             locations · users · pets · providers · service_areas · schedules
-│             S0-03 Índice GIST (inmediatamente después de locations)
-│
-└── Carril B: S0-06 (continúa)
-              Service Worker base
-              Web App Manifest
-              Instancia del cliente Supabase en src/lib/supabase.ts
+├── Dev 1:     S0-02 Migraciones 0001 → 0006
+│              locations · users (con perfil Tutor · RFC-001) · pets · providers · service_areas · schedules
+│              S0-03 Índice GIST (inmediatamente después de locations)
+├── Dev 2:     S0-06 Service Worker base · Web App Manifest
+│              Instancia del cliente Supabase en src/lib/supabase.ts
+└── Dev 3:     S0-04 Auth: habilitar email/contraseña + Google OAuth
+               Trigger Auth → public.users (contrato acordado con Dev 1)
 
 DÍA 3
-├── Carril A: S0-02 Migraciones 0007 → 0012
-│             health_records · passport_shares · lost_reports · bookings
-│             booking_status_events · índice GIST (confirmación)
-│
-└── Carril B: S0-04 Auth: habilitar email/contraseña + Google OAuth
-              S0-07 Resend: función utilitaria en _shared/resend-client.ts
-              (pendiente verificación DNS si aún no completó)
+├── Dev 1:     S0-02 Migraciones 0007 → 0015
+│              health_records · passport_shares · lost_reports · bookings
+│              booking_status_events · push_subscriptions (RFC-001)
+│              user_roles (RFC-002) · admin_audit_log (RFC-003) · índice GIST (confirmación)
+├── Dev 2:     S0-06 Rutas públicas (/passport/:hash · /mapa · /encontrada)
+│              Guards de autenticación · stores base
+└── Dev 3:     S0-07 Resend: función utilitaria en _shared/resend-client.ts
+               (pendiente verificación DNS si aún no completó)
 
 DÍA 4
-├── Carril A: S0-05 Crear buckets en Storage
-│             pets · providers · health-records · avatars
-│             Definir políticas de acceso por bucket
-│
-└── Carril B: S0-04 Auth: conectar SMTP Resend cuando DNS esté listo
-              Scaffolds vacíos de Edge Functions (_shared · carpetas)
-              Tipos de Supabase generados (supabase.types.ts)
+├── Dev 1:     Verificar integridad referencial de las 14 tablas
+│              Generar tipos de Supabase (supabase.types.ts) para Dev 2
+├── Dev 2:     Integrar supabase.types.ts · login básico contra Auth de Dev 3
+└── Dev 3:     S0-05 Crear buckets (pets · providers · health-records · avatars)
+               Definir políticas por bucket · conectar SMTP Resend cuando DNS esté listo
+               Scaffolds vacíos de Edge Functions (_shared · carpetas)
 
-DÍA 5 — Integración y verificación
+DÍA 5 — Integración y verificación (los 3 devs, con Dev 1 como responsable de integración)
 ├── Verificar conexión PWA ↔ Supabase Auth (login básico funciona)
-├── Verificar que las 11 tablas existen con columnas correctas
+├── Verificar que las 14 tablas existen con columnas correctas (incl. perfil Tutor, push_subscriptions, user_roles, admin_audit_log)
 ├── Verificar índice GIST creado sobre locations.coordinates
 ├── Verificar los 4 buckets de Storage con sus políticas
 ├── Verificar envío de email de prueba vía Resend
@@ -625,7 +685,7 @@ El Sprint 0 se considera completo únicamente cuando todos los siguientes puntos
 **Supabase:**
 - [ ] Proyecto staging y proyecto producción creados y accesibles.
 - [ ] Extensión PostGIS habilitada (verificar con `SELECT postgis_version()`).
-- [ ] Las 11 tablas existen en el esquema `public` con todas sus columnas.
+- [ ] Las 14 tablas existen en el esquema `public` con todas sus columnas (incluye `push_subscriptions`, `user_roles`, `admin_audit_log` y el perfil del Tutor en `users` — RFC-001/002/003).
 - [ ] El índice GIST existe sobre `locations.coordinates`.
 - [ ] Los 3 proveedores de Auth configurados (email, Google, Facebook*).
 - [ ] Los 4 buckets de Storage creados con políticas de acceso definidas.
@@ -655,7 +715,6 @@ Antes de dar el sprint por cerrado, el equipo debe confirmar la posición sobre 
 
 | Gap | Pregunta a responder antes de cerrar Sprint 0 |
 |---|---|
-| GAP-014 | ¿Las políticas de RLS se crean ahora en modo permisivo o se bloquea todo hasta tener las políticas definitivas? |
-| GAP (bucket avatars) | ¿Se confirma el nombre `avatars` para el bucket de fotos de perfil del Tutor? |
+| GAP-014 | ¿Las políticas de RLS se crean ahora en modo permisivo o se bloquea todo hasta tener las políticas definitivas? (Incluir la RLS de `push_subscriptions` — RFC-001.) |
 | GAP-007 | ¿Qué valor inicial de `status` se usa en `bookings` para no dejar el CHECK constraint vacío? |
 | GAP-013 | ¿Se confirma que `radius_km` en `providers` es el campo operativo en Fase 1 y 2, y `service_areas` queda inactiva? |

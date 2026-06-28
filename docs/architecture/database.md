@@ -1,10 +1,15 @@
 # Arquitectura de Base de Datos — APPATITAS
-**Versión:** 1.0
-**Fuente:** `docs/SDD_MASTER.md` v1.1
+**Versión:** 1.3
+**Fuente:** `docs/SDD_MASTER.md` v1.2 · `docs/rfcs/RFC-001` · `docs/rfcs/RFC-002` · `docs/rfcs/RFC-003`
 **Motor:** PostgreSQL + PostGIS (via Supabase)
-**Fecha:** Mayo 2025
+**Fecha:** Mayo 2025 · Revisión: 2026-06-25 (RFC-001/002/003)
 
 Este documento describe el diseño de base de datos derivado estrictamente del SDD_MASTER. No se documenta ninguna tabla ni campo que no esté referenciado en dicho documento.
+
+> **RFC aplicados (2026-06-25).** El sistema pasa de 11 a **14 tablas**:
+> - **RFC-001:** `users` enriquecida con el perfil del Tutor (`full_name`, `phone`, `avatar_url`, `location_id`) + tabla `push_subscriptions`.
+> - **RFC-002 (GAP-004):** se retira `users.role`; los roles múltiples viven en `user_roles`.
+> - **RFC-003 (GAP-005):** actor Admin operativo + tabla inmutable `admin_audit_log`.
 
 ---
 
@@ -25,6 +30,10 @@ Establecidos o inferidos directamente del SDD v1.1:
 users
   └──< providers          (un user puede ser proveedor)
   └──< pets               (un user/tutor puede tener muchas mascotas)
+  └──< user_roles         (un user puede tener varios roles · RFC-002)
+  └──< push_subscriptions (un user puede tener varios dispositivos · RFC-001)
+  └──< admin_audit_log    (acciones ejecutadas por un Admin · RFC-003)
+  └── locations           (FK: ubicación del Tutor · RFC-001, nullable)
 
 providers
   └──< schedules          (un proveedor tiene grilla semanal)
@@ -42,7 +51,10 @@ bookings
 lost_reports
   └── locations           (FK: última ubicación de la mascota)
 
-locations                 (tabla compartida, referenciada por FK desde múltiples tablas)
+push_subscriptions        (suscripciones Web Push por dispositivo · RFC-001)
+  └── users               (FK: dueño de la suscripción)
+
+locations                 (tabla compartida, referenciada por FK desde users, providers y lost_reports)
 ```
 
 ---
@@ -56,14 +68,19 @@ Tabla central de identidad. Creada automáticamente al completar el flujo de reg
 |---|---|---|
 | `id` | UUID | PK, generado por Supabase Auth |
 | `email` | TEXT | Único en el sistema (RN-005) |
-| `role` | TEXT | Valores: `tutor`, `provider`, `admin` |
 | `email_verified` | BOOLEAN | Verificación obligatoria antes de acceso completo (RN-004) |
+| `full_name` | TEXT | Nombre completo del Tutor (RFC-001, HU-002). NULLABLE |
+| `phone` | TEXT | Teléfono de contacto (RFC-001, HU-002). NULLABLE |
+| `avatar_url` | TEXT | URL del avatar en bucket `avatars` (RFC-001, HU-002). NULLABLE |
+| `location_id` | UUID | FK → `locations.id`. Ubicación del Tutor (RFC-001, HU-002/HU-016). NULLABLE |
 | `created_at` | TIMESTAMP | Fecha de registro |
 | `updated_at` | TIMESTAMP | Última modificación |
 
 **Notas:**
-- El campo `role` define el tipo de actor. Ver GAP-004 en `docs/GAP_ANALYSIS.md` para la ambigüedad de roles múltiples.
+- **RFC-002 (GAP-004):** la columna escalar `role` se retira. Los roles del usuario viven en la tabla `user_roles` (1:N, §3.13), permitiendo roles múltiples (`tutor` + `provider`).
 - `id` es provisto directamente por Supabase Auth.
+- **RFC-001:** las columnas `full_name`, `phone`, `avatar_url` y `location_id` materializan el perfil del Tutor de HU-002. Se eligió enriquecer `users` en lugar de crear una tabla `tutors`, en coherencia con el patrón de `providers` (que también tiene `location_id`). Todas son NULLABLE para no romper el INSERT inicial del trigger de Auth.
+- `location_id` es el origen de `tutor.location` usado por `ST_DWithin` en HU-016 (ver §5).
 
 ---
 
@@ -85,6 +102,7 @@ Perfil comercial del Proveedor. Enriquecido en SDD v1.1 (HU-005, HU-006).
 | `billing_email` | TEXT | Email de facturación (campo v1.1) |
 | `payout_method` | TEXT | Método de cobro (campo v1.1) |
 | `rating_avg` | NUMERIC | Promedio de valoraciones (usado en HU-016) |
+| `verified` | BOOLEAN | Sello "Verificado" (RN-021). Lo otorga el Admin en HU-020. Default `false` |
 | `created_at` | TIMESTAMP | Fecha de registro |
 | `updated_at` | TIMESTAMP | Última modificación |
 
@@ -185,7 +203,7 @@ Grilla semanal de disponibilidad del Proveedor (HU-006).
 |---|---|---|
 | `id` | UUID | PK |
 | `provider_id` | UUID | FK → `providers.id` |
-| `day_of_week` | INTEGER | 0 = lunes … 6 = domingo |
+| `day_of_week` | INTEGER | 0 = domingo … 6 = sábado (convención PostgreSQL `EXTRACT(DOW)`) |
 | `is_closed` | BOOLEAN | Día marcado como cerrado |
 | `blocks` | JSONB | Array de bloques de 30 min disponibles en ese día |
 | `created_at` | TIMESTAMP | Fecha de creación |
@@ -194,6 +212,7 @@ Grilla semanal de disponibilidad del Proveedor (HU-006).
 **Notas:**
 - La estructura de `blocks` (JSONB) permite representar la grilla de 30 minutos sin crear una fila por bloque.
 - Estos datos alimentan el cálculo de disponibilidad de HU-017.
+- **Convención de `day_of_week` (corrección de revisión 2026-06-25):** se adopta `0 = domingo … 6 = sábado`, alineado con `EXTRACT(DOW FROM timestamp)` de PostgreSQL. Esto evita errores de off-by-one al cruzar la grilla del Proveedor con fechas reales en el cálculo de disponibilidad de HU-017.
 
 ---
 
@@ -268,36 +287,101 @@ Auditoría de cambios de estado de una reserva (SDD v1.1, §Notas).
 | `reason` | TEXT | Motivo del cambio (opcional) |
 | `created_at` | TIMESTAMP | Timestamp exacto del cambio |
 
+**Esta tabla es inmutable.** No se actualiza; solo se insertan filas. Cada transición de estado de una reserva genera un nuevo registro.
+
+---
+
+### 3.12 `push_subscriptions`
+Suscripciones Web Push de los dispositivos del usuario (RFC-001). Almacena el objeto de suscripción completo de la Web Push API. Reemplaza la referencia a `users.push_token` que aparecía en los diagramas de flujo.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | UUID | PK, default `gen_random_uuid()` |
+| `user_id` | UUID | FK → `users.id`. NOT NULL |
+| `endpoint` | TEXT | Endpoint del navegador. NOT NULL, UNIQUE |
+| `p256dh` | TEXT | Clave pública de cifrado de la suscripción. NOT NULL |
+| `auth` | TEXT | Secreto de autenticación de la suscripción. NOT NULL |
+| `user_agent` | TEXT | User agent del dispositivo (opcional). NULLABLE |
+| `created_at` | TIMESTAMP | Fecha de alta de la suscripción |
+
+**Notas:**
+- **RFC-001:** un usuario puede tener varios dispositivos → relación 1:N con `users`. Se guarda el objeto de suscripción completo (`endpoint` + claves `p256dh` y `auth`), no un "token" suelto, como exige la Web Push API.
+- `endpoint` es UNIQUE para evitar duplicar la suscripción del mismo navegador. Si el navegador rota el endpoint, se inserta uno nuevo y se limpian los expirados (ver árbol de decisión de push en `docs/system-architecture.md` §8.2).
+- Esta tabla es la fuente de los envíos push de HU-009, HU-012 y HU-014.
+- Requiere política RLS: cada usuario solo ve y gestiona sus propias suscripciones (se coordina con GAP-014). Ver ADR-002.
+
+---
+
+### 3.13 `user_roles`
+Roles asignados a cada usuario (RFC-002, resuelve GAP-004). Reemplaza la columna escalar `users.role`. Permite que una cuenta acumule varios roles.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `user_id` | UUID | FK → `users.id`. Parte de la PK |
+| `role` | TEXT | `tutor` \| `provider` \| `admin`. Parte de la PK |
+| `created_at` | TIMESTAMP | Fecha de asignación del rol |
+
+**Notas:**
+- **PRIMARY KEY (`user_id`, `role`)** — impide roles duplicados por usuario; la PK compuesta indexa por `user_id`.
+- `tutor` y `provider` se asignan por autoservicio en el registro (HU-001/HU-005). `admin` se asigna solo internamente (RFC-003, HU-018), nunca por autoservicio.
+- La autorización por rol en RLS usa la función `has_role(uid, r)` que consulta esta tabla. Ver ADR-002.
+
+---
+
+### 3.14 `admin_audit_log`
+Auditoría inmutable de las acciones del Administrador sobre datos sensibles (RFC-003, resuelve GAP-005). Coherente con la filosofía de `booking_status_events`.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | UUID | PK, default `gen_random_uuid()` |
+| `admin_id` | UUID | FK → `users.id`. Admin que ejecuta la acción |
+| `action` | TEXT | Ej: `provider_approved`, `provider_rejected`, `verified_badge_granted`, `report_hidden`, `role_granted` |
+| `target_table` | TEXT | Entidad afectada (ej: `providers`, `lost_reports`, `user_roles`) |
+| `target_id` | UUID | Id de la entidad afectada |
+| `metadata` | JSONB | Motivo, valores previos o contexto (opcional) |
+| `created_at` | TIMESTAMP | Timestamp exacto de la acción |
+
+**Notas:**
+- **Tabla inmutable:** solo INSERT. Sin UPDATE ni DELETE (RLS — ver ADR-002).
+- Las capacidades de HU-020 (aprobación de Proveedores) y HU-021 (moderación) escriben aquí. El panel de monitoreo de HU-019, al ser solo lectura, no genera registros.
+
 ---
 
 ## 4. Supabase Storage — Buckets
+
+Cuatro buckets en total. El bucket `avatars` queda confirmado por RFC-001 (HU-002 requiere avatar de Tutor).
 
 | Bucket | Contenido | HU de Origen | Límites |
 |---|---|---|---|
 | `pets` | Fotos de mascota (1 por mascota) | HU-003 | Sin límite de tamaño documentado |
 | `providers` | Galería comercial del Proveedor | HU-006 | Máx. 6 fotos por Proveedor (RN-017) |
-| `health_records` | Adjuntos de consultas clínicas | HU-010 | Máx. 3 archivos, 5 MB c/u (RN-023) |
-| *(avatars)* | Fotos de perfil de Tutor | HU-002 | Sin nombre de bucket documentado en SDD |
+| `health-records` | Adjuntos de consultas clínicas | HU-010 | Máx. 3 archivos, 5 MB c/u (RN-023) |
+| `avatars` | Fotos de perfil de Tutor | HU-002 | Confirmado por RFC-001 |
+
+**Nota de nomenclatura (corrección de revisión 2026-06-25):** el bucket de adjuntos clínicos se nombra `health-records` (con guion), consistente con `docs/sprint-0-plan.md` y `docs/system-architecture.md`. No usar `health_records` (con guion bajo), que es el nombre de la tabla, para evitar confusión.
 
 ---
 
 ## 5. Consultas Geoespaciales Clave
 
-Derivadas directamente del SDD.
+Derivadas directamente del SDD. Tras RFC-001, el origen de la ubicación del Tutor es `users.location_id → locations.coordinates`.
 
 ### Búsqueda de Proveedores (HU-016)
 ```sql
--- Proveedores activos dentro del radio del Tutor, ordenados por distancia y rating
-ST_DWithin(provider.location, tutor.location, radius_meters)
+-- Proveedores activos dentro del radio del Tutor, ordenados por distancia y rating.
+-- prov_loc = locations del proveedor (providers.location_id)
+-- tutor_loc = locations del tutor (users.location_id) — origen definido por RFC-001
+ST_DWithin(prov_loc.coordinates, tutor_loc.coordinates, radius_meters)
 ORDER BY
-  ST_Distance(provider.location, tutor.location) ASC,
+  ST_Distance(prov_loc.coordinates, tutor_loc.coordinates) ASC,
   providers.rating_avg DESC
 ```
 
 ### Notificación Masiva por Mascota Perdida (HU-012)
 ```sql
--- Usuarios en radio de 5 KM de la última ubicación de la mascota
-ST_DWithin(user.location, lost_report.location, 5000)
+-- Usuarios en radio de 5 KM de la última ubicación de la mascota.
+-- user_loc = locations del usuario (users.location_id) — origen definido por RFC-001
+ST_DWithin(user_loc.coordinates, lost_report_loc.coordinates, 5000)
 ```
 
 ### Motor de Coincidencias — Mascota Encontrada (HU-014)

@@ -1,7 +1,9 @@
 # Arquitectura del Sistema — APPATITAS
-**Versión:** 1.0
-**Fuente:** `docs/SDD_MASTER.md` v1.1 · `docs/adrs/` · `docs/architecture/`
-**Fecha:** Mayo 2025
+**Versión:** 1.2
+**Fuente:** `docs/SDD_MASTER.md` v1.2 · `docs/adrs/` · `docs/architecture/` · `docs/rfcs/RFC-001..003`
+**Fecha:** Mayo 2025 · Revisión: 2026-06-25 (RFC-001/002/003)
+
+> **RFC aplicados.** (1) El almacén de suscripciones push deja de ser `users.push_token` y pasa a la tabla `push_subscriptions`; el perfil del Tutor vive en `users` (RFC-001). (2) Los roles del usuario viven en `user_roles` —no en `users.role`— permitiendo roles múltiples (RFC-002). (3) El actor Admin opera el área `/admin` (HU-018..021) con auditoría en `admin_audit_log` (RFC-003). Ver `docs/architecture/database.md`.
 
 Todo elemento de este documento tiene origen trazable en el SDD_MASTER.
 Los elementos marcados con `*` tienen gaps documentados en `docs/GAP_ANALYSIS.md`.
@@ -169,9 +171,11 @@ graph TB
             B1[bucket: pets]
             B2[bucket: providers]
             B3[bucket: health-records]
+            B4[bucket: avatars]
             STOR --> B1
             STOR --> B2
             STOR --> B3
+            STOR --> B4
         end
 
         subgraph Logic["Capa de Lógica"]
@@ -194,8 +198,37 @@ erDiagram
     users {
         uuid id PK
         text email
-        text role
         boolean email_verified
+        text full_name
+        text phone
+        text avatar_url
+        uuid location_id FK
+        timestamp created_at
+    }
+
+    user_roles {
+        uuid user_id PK
+        text role PK
+        timestamp created_at
+    }
+
+    admin_audit_log {
+        uuid id PK
+        uuid admin_id FK
+        text action
+        text target_table
+        uuid target_id
+        jsonb metadata
+        timestamp created_at
+    }
+
+    push_subscriptions {
+        uuid id PK
+        uuid user_id FK
+        text endpoint
+        text p256dh
+        text auth
+        text user_agent
         timestamp created_at
     }
 
@@ -297,6 +330,10 @@ erDiagram
     users ||--o{ lost_reports : "reporta"
     users ||--o{ bookings : "reserva"
     users ||--o{ booking_status_events : "genera"
+    users ||--o{ push_subscriptions : "suscribe (RFC-001)"
+    users ||--o{ user_roles : "tiene rol (RFC-002)"
+    users ||--o{ admin_audit_log : "audita como admin (RFC-003)"
+    users ||--o| locations : "ubicado en (RFC-001)"
     providers ||--o| locations : "ubicada en"
     providers ||--o{ schedules : "tiene"
     providers ||--o{ service_areas : "cubre"
@@ -329,17 +366,17 @@ sequenceDiagram
         AUTH->>RS: Envía email de verificación
         RS-->>U: Email con enlace de verificación
         U->>AUTH: Clic en enlace
-        AUTH->>DB: INSERT users (role, email_verified=true)
+        AUTH->>DB: INSERT users + INSERT user_roles(role) · RFC-002
     else OAuth Google / Facebook
         PWA->>AUTH: signInWithOAuth(provider)
         AUTH-->>U: Redirect a proveedor OAuth
         U->>AUTH: Autoriza
-        AUTH->>DB: INSERT users (role, email_verified=true)
+        AUTH->>DB: INSERT users + INSERT user_roles(role) · RFC-002
     end
 
-    AUTH-->>PWA: JWT (user_id, role, exp)
+    AUTH-->>PWA: JWT (user_id, exp)
     PWA->>DB: Toda consulta incluye JWT en header
-    DB->>DB: RLS valida user_id y role por fila
+    DB->>DB: RLS valida user_id y has_role(uid, r) contra user_roles
     DB-->>PWA: Solo filas autorizadas
 ```
 
@@ -349,7 +386,8 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> pending_approval : Proveedor completa registro\nHU-005
 
-    pending_approval --> active : Admin aprueba\nHU-005 / GAP-005*
+    pending_approval --> active : Admin aprueba\nHU-020 (registra en admin_audit_log)
+    pending_approval --> rejected : Admin rechaza con motivo\nHU-020
 
     pending_approval --> pending_approval : Tiempo pasa\nNo visible en búsquedas\nRN-002
 
@@ -393,10 +431,14 @@ graph LR
         R13[/agenda]
     end
 
-    subgraph Admin["role: admin"]
-        R14[/admin/proveedores*]
+    subgraph Admin["role: admin (RFC-003)"]
+        R14[/admin · dashboard\nHU-019]
+        R15[/admin/proveedores\nHU-020]
+        R16[/admin/moderacion\nHU-021]
     end
 ```
+
+> **Acceso al área `/admin` (RFC-003):** protegida por `has_role(auth.uid(), 'admin')` (RFC-002). El rol `admin` solo se asigna internamente. Toda acción de HU-020/HU-021 se registra en `admin_audit_log`.
 
 ---
 
@@ -418,10 +460,15 @@ graph TB
         subgraph B3["bucket: health-records"]
             P3["{pet_id}/{record_id}/*.pdf\nAdjuntos clínicos — HU-010\nMáx. 3 · 5MB c/u — RN-023"]
         end
+
+        subgraph B4["bucket: avatars"]
+            P4["{user_id}/avatar.jpg\nFoto de perfil del Tutor — HU-002\nConfirmado por RFC-001"]
+        end
     end
 
     TUTOR[Tutor autenticado] -->|Upload| B1
     TUTOR -->|Upload| B3
+    TUTOR -->|Upload| B4
     PROV[Proveedor autenticado] -->|Upload| B2
     ANON[Visitante anónimo] -->|Lectura via hash| B1
 ```
@@ -455,7 +502,7 @@ graph TB
     subgraph EF["Supabase Edge Functions · Deno"]
         EF1[health-alerts-cron\nCron diario · HU-009]
         EF2[lost-pet-notify\nTrigger en INSERT lost_reports\nHU-012]
-        EF3[found-pet-match\nTrigger en INSERT found_reports\nHU-014]
+        EF3[found-pet-match\nTrigger en INSERT lost_reports type=found\nHU-014]
         EF4[report-closed\nTrigger en UPDATE status=found\nHU-015]
         EF5[booking-payment*\nTrigger en INSERT bookings\nHU-017]
     end
@@ -484,13 +531,13 @@ sequenceDiagram
     DB-->>EF: Lista de registros vencidos/próximos
 
     loop Por cada registro
-        EF->>DB: SELECT user push_token, email\nWHERE pet_id = record.pet_id
-        DB-->>EF: Datos del Tutor
+        EF->>DB: SELECT u.email + push_subscriptions\nWHERE pet.user_id = record.pet.user_id
+        DB-->>EF: Email + suscripciones push del Tutor
 
         EF->>RS: send(email, plantilla, datos)
         RS-->>EF: OK
 
-        EF->>VP: sendPush(token, payload)
+        EF->>VP: sendPush(subscription, payload)
         VP-->>EF: OK
     end
 
@@ -511,11 +558,11 @@ sequenceDiagram
     PWA->>DB: INSERT lost_reports\n(location_id, status=lost)
     DB->>EF: Trigger on INSERT
 
-    EF->>DB: SELECT users.push_token\nWHERE ST_DWithin(\n  user.location,\n  lost_report.location,\n  5000\n)
-    DB-->>EF: Lista de usuarios en radio 5KM
+    EF->>DB: SELECT push_subscriptions\nJOIN users u ON u.id = ps.user_id\nWHERE ST_DWithin(\n  user_loc.coordinates,\n  lost_report_loc.coordinates,\n  5000\n)
+    DB-->>EF: Suscripciones de usuarios en radio 5KM
 
-    loop Por cada usuario en radio
-        EF->>VP: sendPush(token, {mascota, foto, ubicación})
+    loop Por cada suscripción en radio
+        EF->>VP: sendPush(subscription, {mascota, foto, ubicación})
     end
 
     VP-->>T: Confirmación de envío
@@ -539,8 +586,8 @@ sequenceDiagram
     DB-->>EF: Reportes compatibles
 
     loop Por cada reporte compatible
-        EF->>DB: SELECT tutor push_token\nWHERE user_id = lost_report.user_id
-        EF->>VP: sendPush(token, {match_info})
+        EF->>DB: SELECT push_subscriptions\nWHERE user_id = lost_report.user_id
+        EF->>VP: sendPush(subscription, {match_info})
     end
 ```
 
@@ -661,14 +708,14 @@ graph TB
 
 ```mermaid
 flowchart TD
-    A[Notificación a enviar] --> B{Usuario tiene\ntoken push registrado?}
+    A[Notificación a enviar] --> B{Usuario tiene\nsuscripción push\nen push_subscriptions?}
     B -->|No| C[Solo email si HU-009\nSin canal alternativo si HU-012]
     B -->|Sí| D{iOS + PWA\nno instalada como A2HS?}
     D -->|Sí| E[Push no llega\nEmail como respaldo si HU-009]
     D -->|No| F[Enviar via VAPID\nWeb Push API]
     F --> G{Entrega exitosa?}
     G -->|Sí| H[Notificación recibida]
-    G -->|No — token expirado| I[Eliminar token\nde la base de datos]
+    G -->|No — endpoint expirado| I[Eliminar fila de\npush_subscriptions]
 ```
 
 ---
@@ -751,7 +798,7 @@ graph TB
     end
 
     subgraph L5["Capa de Archivos"]
-        STOR["Supabase Storage\nbucket: pets\nbucket: providers\nbucket: health-records"]
+        STOR["Supabase Storage\nbucket: pets\nbucket: providers\nbucket: health-records\nbucket: avatars"]
     end
 
     subgraph L6["Servicios Externos"]

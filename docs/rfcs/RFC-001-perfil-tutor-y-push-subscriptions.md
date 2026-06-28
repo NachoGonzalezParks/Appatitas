@@ -2,8 +2,10 @@
 
 **Autor:** Alejandro González (aegonzalez73)
 **Fecha:** 2026-06-23
-**Estado:** Propuesto (pendiente de revisión del equipo)
+**Estado:** Aprobado e incorporado al corpus (2026-06-25) — corpus en v1.2
 **Nivel de aprobación requerido:** Dev Lead + revisión de equipo (tipo "Nueva tabla o columna", SDD_LOCK §4.1)
+
+> **Aplicado el 2026-06-25.** Los cambios A y B fueron incorporados al corpus normativo: `docs/architecture/database.md` (§3.1, §3.12, §4, §5), `docs/SDD_LOCK.md` (§1, §2.2 — 12 tablas, historial v1.2), `docs/system-architecture.md` (erDiagram, flujos push, buckets), `docs/traceability.md`, `docs/domain-map.md`, `docs/sprint-0-plan.md` y `docs/technical-backlog.md`. Migraciones de Sprint 0 ajustadas: `0002_create_users.sql` incluye las 4 columnas de perfil y se agrega `0013_create_push_subscriptions.sql`.
 
 ---
 

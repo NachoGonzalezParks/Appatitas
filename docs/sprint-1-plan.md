@@ -45,7 +45,7 @@ Sin este sprint no existe ningún actor en el sistema. Sin mascota registrada no
 
 | GAP | Descripción | Impacto en el sprint | Decisión provisional |
 |---|---|---|---|
-| GAP-004 | Rol único vs múltiple por usuario | S1-01: el formulario de selección de rol implica exclusividad | Implementar `role` como campo escalar según SDD v1.1. Documentar como pendiente. |
+| GAP-004 | Rol único vs múltiple por usuario | ✅ Resuelto por RFC-002 | Roles en tabla `user_roles` (1:N). El registro inserta el rol elegido; un usuario puede acumular `tutor` + `provider`. La UI requiere un selector de "rol activo". |
 | GAP-006 | Dependencia de Fase 2 en HU-004 | S1-04: la cascada sobre `bookings` debe no fallar si no hay reservas | La query de cascada debe ejecutarse con `WHERE scheduled_at > now()` y no fallar en tabla vacía. |
 
 ### 1.5 Riesgos
@@ -67,21 +67,21 @@ Sin este sprint no existe ningún actor en el sistema. Sin mascota registrada no
 
 ```
 Visitante llega a la app
-  → Pantalla de selección de rol
-      ├── "Soy dueño de mascota"  → role = 'tutor'
-      └── "Ofrezco servicios"     → role = 'provider'  (Sprint 4)
+  → Pantalla de selección de rol (rol elegido en el onboarding)
+      ├── "Soy dueño de mascota"  → user_roles: role = 'tutor'
+      └── "Ofrezco servicios"     → user_roles: role = 'provider'  (Sprint 4)
 
 Tutor selecciona método:
   ├── Email/contraseña
-  │     → supabase.auth.signUp({ email, password })
+  │     → supabase.auth.signUp({ email, password, options: { data: { role } } })
   │     → Supabase envía email de verificación (vía Resend SMTP)
   │     → Pantalla: "Revisá tu email"
   │     → Usuario hace clic en enlace → email_verified = true
-  │     → Trigger INSERT en public.users (id, email, role, email_verified=true)
+  │     → Trigger INSERT en public.users + INSERT en user_roles(role)  (RFC-002)
   │
   ├── OAuth Google
   │     → supabase.auth.signInWithOAuth({ provider: 'google' })
-  │     → Redirect → callback → Trigger INSERT en public.users
+  │     → Redirect → callback → Trigger INSERT en public.users + user_roles
   │
   └── OAuth Facebook
         → supabase.auth.signInWithOAuth({ provider: 'facebook' })
@@ -90,7 +90,7 @@ Tutor selecciona método:
 
 **Trigger en base de datos (ejecutar en Sprint 0, verificar aquí):**
 
-Función que se dispara en `INSERT ON auth.users` y crea la fila correspondiente en `public.users`. El `role` debe pasarse como metadata en el momento del signup.
+Función que se dispara en `INSERT ON auth.users` y crea la fila en `public.users` **y** la fila de rol en `user_roles` (RFC-002). El rol elegido se pasa como metadata (`options.data.role`) en el signup. El rol `admin` nunca se asigna por esta vía. Un usuario que ya existe y suma un rol (ej: Tutor que se hace Proveedor en HU-005) agrega una fila a `user_roles` sin duplicar (PK compuesta).
 
 **Guard de rutas:**
 
@@ -188,8 +188,11 @@ Definir antes de avanzar a Sprint 2:
 | Tabla | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | `users` | Solo propio `id` | Solo via trigger Auth | Solo propio `id` | Nunca |
+| `user_roles` | Solo propio `user_id` | `tutor`/`provider`: propio; `admin`: solo otro admin | Nunca (se borra+inserta) | Solo admin |
 | `pets` | Solo `user_id = auth.uid()` | Solo `user_id = auth.uid()` | Solo `user_id = auth.uid()` | Nunca |
 | `locations` | Pública (lectura) | Autenticado | Solo el propietario indirecto | Nunca |
+
+Se define la función `has_role(uid, r)` (RFC-002) para los chequeos de rol en RLS de todas las tablas. `admin_audit_log` (RFC-003) se crea en Sprint 0; su RLS (solo INSERT, lectura admin) puede fijarse aquí o al introducir el módulo Admin.
 
 ---
 
@@ -228,12 +231,12 @@ src/
 │   └── guards.ts                     — authGuard + emailVerifiedGuard
 │
 └── stores/
-    ├── auth.store.ts                 — session, user, role
+    ├── auth.store.ts                 — session, user, roles[], activeRole
     └── pet.store.ts                  — activePet, petList
 
 supabase/
 └── migrations/
-    └── 0013_rls_sprint1.sql          — Políticas RLS de users y pets
+    └── 0016_rls_sprint1.sql          — Políticas RLS de users, user_roles y pets + función has_role()
 ```
 
 ---

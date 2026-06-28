@@ -32,6 +32,19 @@ El SDD define tres roles: `tutor`, `provider`, `admin` en la tabla `users`. La p
 
 **Autorización:** Implementar **Row Level Security (RLS)** en PostgreSQL para controlar el acceso a datos por fila, usando el `user_id` del JWT de Supabase como identificador del actor en cada política.
 
+**Roles (RFC-002):** los roles del usuario viven en la tabla `user_roles` (no en un campo escalar `users.role`), permitiendo roles múltiples (`tutor` + `provider`). La autorización por rol se evalúa con una función `has_role(uid uuid, r text)` marcada `STABLE`:
+
+```sql
+CREATE FUNCTION has_role(uid uuid, r text) RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT EXISTS (SELECT 1 FROM user_roles WHERE user_id = uid AND role = r);
+$$;
+```
+
+Las políticas usan `has_role(auth.uid(), 'admin')`, `has_role(auth.uid(), 'provider')`, etc. El rol `admin` solo se asigna manualmente (RFC-003), nunca por autoservicio.
+
+**Área de administración (RFC-003):** el área `/admin` (HU-018..021) queda protegida por `has_role(auth.uid(), 'admin')`. La tabla `admin_audit_log` registra de forma **inmutable** las acciones del Admin: política de **solo INSERT** (sin UPDATE ni DELETE), con lectura restringida a `admin`.
+
 **Rutas públicas documentadas en el SDD:**
 
 | Ruta | HU | Mecanismo |
@@ -55,6 +68,7 @@ El SDD define tres roles: `tutor`, `provider`, `admin` en la tabla `users`. La p
 - Las políticas de RLS deben diseñarse y mantenerse por tabla. Un error en una política puede exponer o bloquear datos de forma inesperada.
 - La política de RLS concreta para cada tabla **no está especificada en el SDD v1.1**. Debe definirse antes de la implementación (GAP-014 en `docs/GAP_ANALYSIS.md`).
 - El enlace de pasaporte (HU-011) expone datos de salud de la mascota sin sesión. La seguridad depende de la entropía del hash y del TTL de 7 días (RN-008). No hay mecanismo de revocación anticipada documentado en el SDD.
+- **`push_subscriptions` (RFC-001):** la tabla de suscripciones Web Push guarda datos por usuario y requiere política RLS — cada usuario solo puede leer, insertar y eliminar sus propias suscripciones (`user_id = auth.uid()`). Las Edge Functions de notificación (HU-009/012/014) leen esta tabla con el `service_role`, fuera del alcance de RLS. Se coordina con GAP-014. Ver `docs/rfcs/RFC-001-perfil-tutor-y-push-subscriptions.md`.
 
 ---
 

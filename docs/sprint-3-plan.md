@@ -96,15 +96,15 @@ Transacción:
 Disparador: INSERT en lost_reports WHERE type = 'lost'
 
 Lógica:
-  usuarios_en_radio = SELECT u.push_token
-                      FROM users u
-                      JOIN locations l ON l.id = u.location_id
-                      WHERE ST_DWithin(l.coordinates, lost_report.coordinates, 5000)
-                        AND u.push_token IS NOT NULL
-                      LIMIT 500   -- throttle GAP-011
+  suscripciones_en_radio = SELECT ps.endpoint, ps.p256dh, ps.auth
+                           FROM push_subscriptions ps        -- RFC-001
+                           JOIN users u ON u.id = ps.user_id
+                           JOIN locations l ON l.id = u.location_id
+                           WHERE ST_DWithin(l.coordinates, lost_report.coordinates, 5000)
+                           LIMIT 500   -- throttle GAP-011
 
-  Para cada usuario (en batches de 100):
-    sendPush(token, {
+  Para cada suscripción (en batches de 100):
+    sendPush(subscription, {
       title: "🐾 Mascota perdida cerca tuyo",
       body:  "{name} ({species}) perdida en tu zona",
       data:  { lost_report_id }
@@ -166,19 +166,19 @@ ORDER BY l.coordinates <-> ST_MakePoint({lng}, {lat})
 Disparador: INSERT en lost_reports WHERE type = 'found'
 
 Lógica (motor de coincidencias — GAP-012):
-  reportes_compatibles = SELECT lr.*, u.push_token
+  reportes_compatibles = SELECT lr.*, ps.endpoint, ps.p256dh, ps.auth
                          FROM lost_reports lr
                          JOIN locations l ON l.id = lr.location_id
                          JOIN users u ON u.id = lr.user_id
+                         JOIN push_subscriptions ps ON ps.user_id = u.id  -- RFC-001
                          WHERE lr.status = 'lost'
                            AND lr.type = 'lost'
                            AND lr.species = found_report.species       -- exacto
                            AND lr.color ILIKE '%' || found_report.color || '%' -- parcial
                            AND ST_DWithin(l.coordinates, found_report.coordinates, 3000)
-                           AND u.push_token IS NOT NULL
 
   Para cada reporte compatible:
-    sendPush(u.push_token, {
+    sendPush(subscription, {
       title: "🔍 Posible coincidencia encontrada",
       body:  "Alguien encontró un {species} similar a {pet_name} a {X} metros",
       data:  { found_report_id, lost_report_id }

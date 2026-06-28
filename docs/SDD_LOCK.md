@@ -1,6 +1,6 @@
 # SDD LOCK — APPATITAS
-**Versión bloqueada:** 1.1
-**Fecha de bloqueo:** Mayo 2025
+**Versión bloqueada:** 1.3
+**Fecha de bloqueo:** Mayo 2025 · Actualizado 2026-06-25 (RFC-001, RFC-002, RFC-003 aprobados)
 **Estado:** ACTIVO
 
 ---
@@ -11,20 +11,23 @@ Ningún miembro del equipo puede iniciar implementación, modificar esquemas de 
 
 ---
 
-## 1. Corpus Normativo — Versión 1.1
+## 1. Corpus Normativo — Versión 1.3
 
-Los siguientes documentos constituyen la fuente de verdad del sistema en su versión 1.1. Están bloqueados a la fecha indicada. Toda implementación debe validarse contra este corpus antes de ejecutarse.
+Los siguientes documentos constituyen la fuente de verdad del sistema en su versión 1.3. Están bloqueados a la fecha indicada. Toda implementación debe validarse contra este corpus antes de ejecutarse.
 
 | Documento | Ruta | Propósito | Estado |
 |---|---|---|---|
-| **SDD Master** | `docs/SDD_MASTER.md` | Historias de usuario, modelo de negocio, roadmap | 🔒 Bloqueado v1.1 |
+| **SDD Master** | `docs/SDD_MASTER.md` | Historias de usuario, modelo de negocio, roadmap | 🔒 Bloqueado v1.2 (RFC-002/003) |
 | **Reglas de Negocio** | `docs/business-rules.md` | RN-001 a RN-026. Fuente de verdad de restricciones | 🔒 Bloqueado v1.0 |
-| **Trazabilidad** | `docs/traceability.md` | Matriz HU → Reglas → Tablas → APIs → UI | 🔒 Bloqueado v2.0 |
-| **Mapa de Dominio** | `docs/domain-map.md` | Bounded Contexts, módulos, entidades, dependencias | 🔒 Bloqueado v1.0 |
-| **Arquitectura de BD** | `docs/architecture/database.md` | Esquema de tablas, columnas, relaciones | 🔒 Bloqueado v1.0 |
-| **Arquitectura de Seguridad** | `docs/architecture/security.md` | Auth, RLS, datos sensibles, storage | 🔒 Bloqueado v1.0 |
-| **Arquitectura del Sistema** | `docs/system-architecture.md` | Capas, flujos, diagramas, tecnologías | 🔒 Bloqueado v1.0 |
-| **Backlog Técnico** | `docs/technical-backlog.md` | Orden de desarrollo por dependencias | 🔒 Bloqueado v1.0 |
+| **Trazabilidad** | `docs/traceability.md` | Matriz HU → Reglas → Tablas → APIs → UI | 🔒 Bloqueado v2.2 (RFC-001/002/003) |
+| **Mapa de Dominio** | `docs/domain-map.md` | Bounded Contexts, módulos, entidades, dependencias | 🔒 Bloqueado v1.2 (RFC-001/002/003) |
+| **Arquitectura de BD** | `docs/architecture/database.md` | Esquema de tablas, columnas, relaciones | 🔒 Bloqueado v1.3 (RFC-001/002/003) |
+| **Arquitectura de Seguridad** | `docs/architecture/security.md` | Auth, RLS, datos sensibles, storage | 🔒 Bloqueado v1.1 (RFC-002/003) |
+| **Arquitectura del Sistema** | `docs/system-architecture.md` | Capas, flujos, diagramas, tecnologías | 🔒 Bloqueado v1.2 (RFC-001/002/003) |
+| **Backlog Técnico** | `docs/technical-backlog.md` | Orden de desarrollo por dependencias | 🔒 Bloqueado v1.1 (RFC-002/003) |
+| **RFC-001** | `docs/rfcs/RFC-001-perfil-tutor-y-push-subscriptions.md` | Perfil del Tutor en `users` + tabla `push_subscriptions` | 🔒 Aprobado (2026-06-25) |
+| **RFC-002** | `docs/rfcs/RFC-002-roles-multiples-por-usuario.md` | Roles múltiples vía `user_roles` (GAP-004) | 🔒 Aprobado (2026-06-25) |
+| **RFC-003** | `docs/rfcs/RFC-003-actor-administrador.md` | Actor Admin (HU-018..021) + `admin_audit_log` (GAP-005) | 🔒 Aprobado (2026-06-25) |
 | **ADR-001** | `docs/adrs/ADR-001-supabase.md` | Supabase como plataforma backend | 🔒 Aceptado |
 | **ADR-002** | `docs/adrs/ADR-002-Authentication-and-RLS.md` | Auth con Supabase Auth y RLS | 🔒 Aceptado |
 | **ADR-003** | `docs/adrs/ADR-003-PostGIS-Geolocation.md` | PostGIS para geolocalización | 🔒 Aceptado |
@@ -34,11 +37,11 @@ Los siguientes documentos constituyen la fuente de verdad del sistema en su vers
 
 ---
 
-## 2. Perímetro del Sistema — Versión 1.1
+## 2. Perímetro del Sistema — Versión 1.3
 
 ### 2.1 Historias de usuario bloqueadas
 
-Las siguientes 17 historias de usuario constituyen el alcance completo y cerrado del sistema en v1.1. No se puede implementar funcionalidad fuera de este listado sin un RFC aprobado.
+Las siguientes 21 historias de usuario constituyen el alcance completo y cerrado del sistema en v1.3. No se puede implementar funcionalidad fuera de este listado sin un RFC aprobado.
 
 | ID | Título | Fase | BC |
 |---|---|---|---|
@@ -59,12 +62,23 @@ Las siguientes 17 historias de usuario constituyen el alcance completo y cerrado
 | HU-015 | Cierre de Reporte por Éxito | 1 | BC-04 |
 | HU-016 | Localización Inteligente de Prestadores | 2 | BC-05 |
 | HU-017 | Reserva de Turnos y Confirmación | 2 | BC-05 |
+| HU-018 | Acceso y Permisos de Administrador | 1 | BC-01 / Admin |
+| HU-019 | Panel de Control y Monitoreo de Transacciones | 1 / 2 | Admin |
+| HU-020 | Aprobación y Gestión de Proveedores | 1 | Admin |
+| HU-021 | Moderación de Reportes de la Comunidad | 1 | Admin |
+
+> **RFC-003 (2026-06-25):** se incorporan HU-018 a HU-021 (actor Admin), resolviendo GAP-005. Ver `docs/SDD_MASTER.md` §6.
 
 ### 2.2 Tablas de base de datos bloqueadas
 
-Las siguientes 11 tablas constituyen el esquema autorizado. No se puede crear ninguna tabla adicional sin un RFC aprobado.
+Las siguientes 14 tablas constituyen el esquema autorizado. No se puede crear ninguna tabla adicional sin un RFC aprobado.
 
-`users` · `locations` · `providers` · `pets` · `health_records` · `passport_shares` · `schedules` · `service_areas` · `lost_reports` · `bookings` · `booking_status_events`
+`users` · `locations` · `providers` · `pets` · `health_records` · `passport_shares` · `schedules` · `service_areas` · `lost_reports` · `bookings` · `booking_status_events` · `push_subscriptions` · `user_roles` · `admin_audit_log`
+
+> **RFC-001 (2026-06-25):** se agrega `push_subscriptions` (suscripciones Web Push) y se enriquece `users` con `full_name`, `phone`, `avatar_url` y `location_id`.
+> **RFC-002 (2026-06-25):** se retira `users.role` y se agrega `user_roles` (roles múltiples · GAP-004).
+> **RFC-003 (2026-06-25):** se agrega `admin_audit_log` (auditoría inmutable de acciones del Admin · GAP-005).
+> El sistema pasa de 11 a **14 tablas**. Ver `docs/architecture/database.md` §3.
 
 ### 2.3 Bounded Contexts bloqueados
 
@@ -213,8 +227,8 @@ Los siguientes gaps de `docs/GAP_ANALYSIS.md` están sin resolver a la fecha de 
 | GAP-001 | HU-017 sin criterios de aceptación | Sprint 5 | Crítica |
 | GAP-002 | Porcentaje de comisión no definido | Sprint 5 | Crítica |
 | GAP-003 | Verificación de servicio y liberación de fondos sin definir | Sprint 5 | Crítica |
-| GAP-004 | Política de roles múltiples por usuario no definida | Sprint 1 | Alta |
-| GAP-005 | Sin HU de Admin para aprobación de Proveedores | Sprint 4 | Alta |
+| ~~GAP-004~~ | ~~Política de roles múltiples por usuario no definida~~ | — | ✅ **Resuelto** por RFC-002 (tabla `user_roles`) |
+| ~~GAP-005~~ | ~~Sin HU de Admin para aprobación de Proveedores~~ | — | ✅ **Resuelto** por RFC-003 (HU-018..021 + `admin_audit_log`) |
 | GAP-006 | Dependencia de Fase 2 embebida en HU-004 (Fase 1) | Sprint 1 | Alta |
 | GAP-007 | Ciclo de vida completo de estados de reserva no documentado | Sprint 5 | Alta |
 | GAP-008 | Sistema de valoraciones sin definir (rating_avg) | Sprint 5 | Alta |
@@ -238,6 +252,8 @@ Los siguientes gaps de `docs/GAP_ANALYSIS.md` están sin resolver a la fecha de 
 |---|---|---|
 | **1.0** | Mayo 2025 | Versión inicial del SDD |
 | **1.1** | Mayo 2025 | Tabla `locations` reutilizable · Enriquecimiento de `providers` (`billing_email`, `payout_method`, `onboarding_status`) · Tabla `booking_status_events` · Tabla `service_areas` · Cierre formal del documento en HU-017 |
+| **1.2** | 2026-06-25 | **RFC-001 aprobado:** perfil del Tutor en `users` (`full_name`, `phone`, `avatar_url`, `location_id`) · nueva tabla `push_subscriptions` (11 → 12 tablas) · habilita HU-002 y el canal push de HU-009/012/014. Correcciones de consistencia: bucket `health-records` (no `health_records`), `day_of_week` 0=domingo, confirmación del bucket `avatars`, rótulo `lost_reports` (type='found') en Edge Function de matching, recuento de severidad de GAPs. |
+| **1.3** | 2026-06-25 | **RFC-002 aprobado (GAP-004):** roles múltiples por usuario vía tabla `user_roles`; se retira `users.role`. **RFC-003 aprobado (GAP-005):** actor Admin operativo con HU-018 a HU-021 (acceso/permisos, panel y monitoreo, aprobación de Proveedores, moderación) + tabla inmutable `admin_audit_log`. El sistema pasa de 12 a **14 tablas** y de 17 a **21 HU**. |
 
 ---
 

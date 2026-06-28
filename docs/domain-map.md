@@ -1,7 +1,7 @@
 # Mapa de Dominio — APPATITAS
-**Versión:** 1.0
-**Fuente:** `docs/SDD_MASTER.md` v1.1
-**Fecha:** Mayo 2025
+**Versión:** 1.2
+**Fuente:** `docs/SDD_MASTER.md` v1.2 · `docs/rfcs/RFC-001..003`
+**Fecha:** Mayo 2025 · Revisión: 2026-06-25 (RFC-001/002/003)
 
 Todo elemento de este documento tiene origen trazable en el SDD_MASTER.
 Los elementos marcados con `*` están referenciados en el SDD pero sin especificación completa (ver `docs/GAP_ANALYSIS.md`).
@@ -32,17 +32,20 @@ El dominio se divide en cinco Bounded Contexts con fronteras funcionales claras.
 **Responsabilidades:**
 - Registro y autenticación de Tutores y Proveedores.
 - Verificación de email obligatoria antes de habilitar acceso.
-- Asignación y control del rol del usuario (`tutor`, `provider`, `admin`).
-- Aprobación manual de Proveedores por parte del Admin (transición `pending_approval` → `active`).
+- Asignación y control de los roles del usuario vía `user_roles` (`tutor`, `provider`, `admin`). Un usuario puede acumular roles (RFC-002).
+- Acceso y permisos del Administrador, y auditoría de sus acciones en `admin_audit_log` (RFC-003, HU-018).
 
 **Entidades:**
 - `User` (identidad base)
+- `UserRole` (roles del usuario · RFC-002)
+- `AdminAuditLog` (auditoría de acciones del Admin · RFC-003)
 
 **Límites hacia afuera:**
-- Provee `user_id` y `role` a todos los demás contextos.
+- Provee `user_id` y los roles (`user_roles`) a todos los demás contextos.
 - No conoce mascotas, servicios ni transacciones.
+- El Admin (RFC-003) opera de forma transversal sobre BC-02 (aprobar Proveedores) y BC-04 (moderar reportes), pero su identidad y permisos pertenecen a BC-01.
 
-**HU:** HU-001, HU-005 (flujo de registro)
+**HU:** HU-001, HU-005 (flujo de registro) · HU-018, HU-019, HU-020, HU-021 (Administración · RFC-003)
 
 ---
 
@@ -207,8 +210,11 @@ BC-05 ──► PostGIS, Mercado Pago Marketplace
 | Módulo | Descripción | Fase |
 |---|---|---|
 | **Auth Tutor** | Registro, OAuth 2.0, verificación email | 1 |
-| **Auth Proveedor** | Registro diferenciado, flujo de selección de rol | 1 |
-| **Aprobación Admin** | Transición pending_approval → active | 1 |
+| **Auth Proveedor** | Registro diferenciado, flujo de selección de rol (roles acumulables · RFC-002) | 1 |
+| **Acceso y Permisos de Admin** | Área `/admin`, `has_role('admin')`, asignación de rol admin (HU-018) | 1 |
+| **Panel y Monitoreo** | Dashboard de métricas y transacciones (HU-019) | 1 / 2 |
+| **Aprobación de Proveedores** | Transición pending_approval → active, sello "Verificado" (HU-020) | 1 |
+| **Moderación de la Comunidad** | Ocultar/cerrar reportes inadecuados (HU-021) | 1 |
 
 ---
 
@@ -265,8 +271,11 @@ BC-05 ──► PostGIS, Mercado Pago Marketplace
 
 | Entidad | Bounded Context | Descripción | Tabla |
 |---|---|---|---|
-| **User** | BC-01 | Identidad base. Rol: tutor, provider, admin | `users` |
-| **Tutor** | BC-02 | Perfil extendido del User dueño de mascotas | extensión de `users` + `locations` |
+| **User** | BC-01 | Identidad base. Sus roles viven en `user_roles` (RFC-002) | `users` |
+| **UserRole** | BC-01 | Rol asignado a un usuario (tutor/provider/admin). Permite roles múltiples (RFC-002) | `user_roles` |
+| **Tutor** | BC-02 | Perfil extendido del User dueño de mascotas (`full_name`, `phone`, `avatar_url`, `location_id` — RFC-001) | `users` (columnas de perfil) + `locations` |
+| **PushSubscription** | BC-01 / transversal | Suscripción Web Push por dispositivo del usuario (RFC-001) | `push_subscriptions` |
+| **AdminAuditLog** | BC-01 / Admin | Registro inmutable de acciones del Admin (RFC-003) | `admin_audit_log` |
 | **Provider** | BC-02 | Entidad comercial. Estado: pending_approval / active | `providers` |
 | **Pet** | BC-02 | Perfil digital de la mascota. Eliminación lógica | `pets` |
 | **Location** | BC-02 | Punto geoespacial compartido. GEOGRAPHY(POINT) | `locations` |
@@ -281,9 +290,12 @@ BC-05 ──► PostGIS, Mercado Pago Marketplace
 ### Relaciones entre entidades
 
 ```
-User ──(1:1)──► Tutor profile (ubicación, contacto)
+User ──(1:N)──► UserRole (tutor/provider/admin acumulables · RFC-002)
+User ──(1:1)──► Tutor profile (full_name, phone, avatar_url, location_id en `users` · RFC-001)
 User ──(1:1)──► Provider profile (datos comerciales)
 User ──(1:N)──► Pet
+User ──(1:N)──► PushSubscription (varios dispositivos · RFC-001)
+User (admin) ──(1:N)──► AdminAuditLog (acciones auditadas · RFC-003)
 
 Pet ──(1:N)──► HealthRecord (vacunas, desparasitaciones, consultas)
 Pet ──(1:N)──► PassportShare
@@ -297,8 +309,10 @@ Provider ──(1:N)──► Booking
 
 Booking ──(1:N)──► BookingStatusEvent
 LostReport ──(1:1)──► Location
-User (Tutor) ──(1:1)──► Location
+User (Tutor) ──(1:1)──► Location   (respaldada por `users.location_id` · RFC-001)
 ```
+
+> **RFC-001:** la relación `User (Tutor) ──► Location` quedaba afirmada en este mapa pero el esquema no la implementaba. Con RFC-001, `users.location_id` (FK → `locations.id`) la materializa, habilitando el origen geoespacial de HU-016.
 
 ---
 

@@ -1,7 +1,7 @@
 # Technical Backlog — APPATITAS
-**Versión:** 1.0
-**Fuente:** `docs/SDD_MASTER.md` v1.1 · `docs/domain-map.md` · `docs/architecture/database.md`
-**Fecha:** Mayo 2025
+**Versión:** 1.1
+**Fuente:** `docs/SDD_MASTER.md` v1.2 · `docs/domain-map.md` · `docs/architecture/database.md` · `docs/rfcs/RFC-001..003`
+**Fecha:** Mayo 2025 · Revisión: 2026-06-25 (RFC-001/002/003)
 **Criterio de ordenamiento:** Dependencias técnicas. Una tarea no puede iniciarse hasta que sus dependencias estén resueltas.
 
 Cada sprint entrega una capa funcional sobre la cual la siguiente puede construirse.
@@ -40,6 +40,16 @@ Crear en orden estricto de dependencias de foreign key:
 9. `lost_reports` — FK a `users` (nullable) y `locations`.
 10. `bookings` — FK a `users`, `providers`, `pets`.
 11. `booking_status_events` — FK a `bookings`.
+12. `push_subscriptions` — FK a `users` (RFC-001).
+13. `user_roles` — FK a `users` (RFC-002).
+14. `admin_audit_log` — FK a `users` (RFC-003).
+
+**RFC aplicados (2026-06-25):**
+- **RFC-001:** `users` se crea con el perfil del Tutor (`full_name`, `phone`, `avatar_url`, `location_id` → FK a `locations`) + tabla `push_subscriptions`.
+- **RFC-002 (GAP-004):** `users` se crea **sin** la columna `role`; los roles viven en `user_roles`. El trigger de Auth inserta en `users` y en `user_roles`.
+- **RFC-003 (GAP-005):** se agrega `admin_audit_log` (auditoría inmutable del Admin).
+
+El esquema pasa de 11 a **14 tablas**. Ver `docs/rfcs/RFC-001..003` y `docs/architecture/database.md` §3.
 
 **Bloquea:** toda operación de base de datos en sprints posteriores.
 
@@ -58,12 +68,14 @@ Crear en orden estricto de dependencias de foreign key:
 **Bloquea:** HU-001, HU-005.
 
 #### S0-05 — Configuración de Supabase Storage
+Cuatro buckets en total:
 - Crear bucket `pets`.
 - Crear bucket `providers`.
-- Crear bucket para adjuntos clínicos de `health_records`.
+- Crear bucket `health-records` (adjuntos clínicos; nombre con guion, no `health_records`).
+- Crear bucket `avatars` (foto de perfil del Tutor — HU-002, confirmado por RFC-001).
 - Definir políticas de acceso por bucket (público vs privado).
 
-**Bloquea:** HU-003, HU-006, HU-010, HU-012.
+**Bloquea:** HU-002, HU-003, HU-006, HU-010, HU-012.
 
 #### S0-06 — Estructura de la PWA
 - Scaffold del proyecto PWA (estructura de carpetas, router, estado global).
@@ -87,9 +99,9 @@ Crear en orden estricto de dependencias de foreign key:
 
 ### Entregables
 - Proyecto Supabase operativo (staging y producción).
-- Esquema completo de base de datos con 11 tablas e índice GIST.
+- Esquema completo de base de datos con **14 tablas** (RFC-001/002/003) e índice GIST.
 - Supabase Auth con los tres proveedores configurados.
-- Tres buckets de Storage creados con políticas de acceso definidas.
+- **Cuatro buckets** de Storage creados con políticas de acceso definidas (`pets`, `providers`, `health-records`, `avatars`).
 - PWA scaffolded con Service Worker y Manifest.
 - Resend integrado y verificado.
 
@@ -108,7 +120,7 @@ Crear en orden estricto de dependencias de foreign key:
 - Pantalla de selección de rol ("Soy dueño de mascota" / "Ofrezco servicios").
 - Formulario email/contraseña con validación.
 - Botones OAuth Google y Facebook.
-- INSERT en `users` con `role = 'tutor'` al completar el flujo.
+- INSERT en `users` + INSERT en `user_roles` con `role = 'tutor'` al completar el flujo (RFC-002).
 - Pantalla de verificación de email pendiente.
 - Bloqueo de acceso hasta `email_verified = true` (RN-004).
 
@@ -294,11 +306,12 @@ Crear en orden estricto de dependencias de foreign key:
 #### S4-01 — Registro de Proveedor (HU-005)
 - Formulario diferenciado (activado desde la selección "Ofrezco servicios" en HU-001).
 - Campos: nombre del negocio, descripción (máx. 500 car.), selector múltiple de categorías, CUIT/DNI, radio de cobertura en KM, pin de ubicación en mapa o dirección.
-- INSERT en `users` (`role = 'provider'`), `providers` (`status = 'pending_approval'` — RN-025), `locations`.
+- INSERT en `user_roles` (`role = 'provider'`, acumulable · RFC-002), `providers` (`status = 'pending_approval'` — RN-025), `locations`.
 - Pantalla de confirmación: estado pendiente de aprobación visible para el Proveedor.
-- Panel de Admin*: vista de Proveedores en `pending_approval` con acción de aprobar → UPDATE `status = 'active'` (RN-002).
+- La aprobación la realiza el Admin mediante **HU-020** (ver Módulo de Administración), que registra la acción en `admin_audit_log`.
 
 **Bloquea:** HU-006, HU-016.
+**Requiere:** HU-018 y HU-020 (Admin) operativos para que el Proveedor pueda pasar a `active`.
 
 #### S4-02 — Galería comercial del Proveedor (HU-006)
 - Subida de hasta 6 fotos al bucket `providers` con contador (RN-017).
@@ -317,9 +330,9 @@ Crear en orden estricto de dependencias de foreign key:
 **Bloquea:** HU-016 (próximo horario disponible en tarjeta), HU-017 (base del sistema de turnos).
 
 ### Riesgos
-- **Panel de Admin sin HU definida (GAP-005):** la aprobación de Proveedores requiere un panel de administración que no tiene historia de usuario en el SDD. Sin él, ningún Proveedor puede pasar a `active` y HU-016 devuelve resultados vacíos. Implementar una interfaz mínima de aprobación como parte de este sprint.
-- **CUIT/DNI sin validación técnica:** el SDD indica "validación diferida por Admin". No implementar validación técnica del CUIT/DNI en este sprint; almacenar el valor como texto.
-- **Proveedor quiere también usar la app como Tutor (GAP-004):** el SDD no documenta roles múltiples. No implementar este caso en este sprint; documentar como pendiente de definición.
+- **Dependencia del Módulo de Administración (GAP-005, resuelto por RFC-003):** la aprobación de Proveedores la ejecuta el Admin vía HU-020. El módulo Admin (HU-018..021) debe estar operativo antes o durante este sprint para que ningún Proveedor quede bloqueado en `pending_approval` y HU-016 tenga oferta. Ya no es un panel "sin HU"; está especificado en `docs/SDD_MASTER.md` §6.
+- **CUIT/DNI sin validación técnica:** el SDD indica "validación diferida por Admin". No implementar validación técnica del CUIT/DNI en este sprint; almacenar el valor como texto. El Admin lo revisa manualmente en HU-020.
+- **Roles múltiples (GAP-004, resuelto por RFC-002):** un Proveedor puede además ser Tutor. El registro agrega `role='provider'` en `user_roles` sin reemplazar `tutor`. La UI necesita un selector de "rol activo".
 
 ### Entregables
 - Flujo completo de registro de Proveedor con estado `pending_approval`.
@@ -387,6 +400,23 @@ Crear en orden estricto de dependencias de foreign key:
 
 ---
 
+## Módulo de Administración (RFC-003 — HU-018 a HU-021)
+
+El actor Admin (GAP-005, resuelto) es transversal. Sus historias se ubican en el cronograma según qué desbloquean:
+
+| Tarea | HU | Ubicación | Razón |
+|---|---|---|---|
+| **ADM-01** Acceso y permisos de Admin (área `/admin`, `has_role('admin')`, asignación de rol) | HU-018 | Sprint 1 (base, junto a Auth) | Prerrequisito de todas las demás capacidades de Admin |
+| **ADM-02** Aprobación y gestión de Proveedores (aprobar/rechazar, sello "Verificado") | HU-020 | Sprint 4 (con BC-02 comercial) | Sin esto ningún Proveedor pasa a `active`; bloquea Sprint 5 |
+| **ADM-03** Moderación de reportes de la comunidad | HU-021 | Sprint 3 (con BC-04) | Modera el contenido público que genera ese sprint |
+| **ADM-04** Panel de control y monitoreo de transacciones | HU-019 | Sprint 1 (métricas base) → Sprint 5 (transacciones) | El monitoreo de reservas requiere `bookings` reales (Fase 2) |
+
+**Tablas:** `user_roles` y `admin_audit_log` se crean en Sprint 0 (RFC-002/003). Cada acción de ADM-02/ADM-03 escribe en `admin_audit_log`. La RLS de estas tablas y la función `has_role()` se definen junto con la RLS general (cierre de Sprint 1).
+
+**Asignación del primer Admin:** se realiza manualmente vía SQL/Studio en Sprint 0 o Sprint 1 (insertar `role='admin'` en `user_roles` para la cuenta del equipo), ya que el rol admin nunca es autoservicio.
+
+---
+
 ## Resumen de Dependencias Críticas
 
 ```
@@ -420,7 +450,24 @@ Sprint 0 (Infraestructura)
 |---|---|---|
 | GAP-001 | HU-017 sin criterios de aceptación | Sprint 5 (S5-03) |
 | GAP-003 | Verificación de servicio y liberación de fondos sin definir | Sprint 5 (S5-03) |
-| GAP-005 | Sin HU de Admin para aprobación de Proveedores | Sprint 4 (S4-01) |
+| ~~GAP-005~~ | ~~Sin HU de Admin para aprobación de Proveedores~~ ✅ Resuelto por RFC-003 (HU-018..021) | ~~Sprint 4~~ |
 | GAP-007 | Ciclo de vida de estados de reserva no documentado | Sprint 5 (S5-03) |
 | GAP-010 | Categorías del panel de alertas sin especificar | Sprint 2 (S2-04) |
 | GAP-012 | Algoritmo del motor de coincidencias sin definir | Sprint 3 (S3-03) |
+
+---
+
+## Reconciliación de Cronograma con el Roadmap del SDD
+
+La suma de los sprints técnicos (Sprint 0: 1 semana + Sprints 1–5: 2 semanas c/u) da **11 semanas de esfuerzo de desarrollo**. El roadmap del SDD_MASTER expresa el plazo en meses calendario: **Fase 1 en meses 1–4** y **Fase 2 en meses 5–9**.
+
+No hay contradicción: las 11 semanas son tiempo de desarrollo neto; el roadmap en meses incluye además procesos externos no codificables (revisión de Meta para Facebook OAuth, aprobación de la cuenta Mercado Pago Marketplace, verificación DNS de Resend, resolución de los gaps críticos por el área de negocio) y los márgenes de QA, pruebas con usuarios y despliegue.
+
+**Alineación de expectativas:**
+
+| Fase del roadmap | Sprints técnicos | Meses calendario (SDD) |
+|---|---|---|
+| Fase 1 — MVP | Sprint 0, 1, 2, 3, 4 | Meses 1–4 |
+| Fase 2 — Marketplace | Sprint 5 | Meses 5–9 (condicionado a Mercado Pago y gaps críticos) |
+
+El equipo debe planificar contra los **meses del roadmap**, no contra las 11 semanas netas, para absorber los tiempos externos.

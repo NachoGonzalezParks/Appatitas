@@ -38,6 +38,10 @@ Appatitas opera como un **Marketplace Transaccional de Servicios** donde la plat
 | **Proveedor** | Profesionales del rubro (Paseador, peluquería, veterinario, etc.). | Cliente comercial (B2B) que genera el *revenue* (ingresos). |
 | **Admin** | Equipo interno de Appatitas. Gestiona la plataforma. | Operador y moderador del marketplace. |
 
+> **Roles múltiples por usuario (RFC-002, resuelve GAP-004):** una misma cuenta puede acumular los roles `tutor` y `provider` simultáneamente (un Proveedor también puede registrar su mascota, y viceversa). El rol `admin` solo se asigna internamente, nunca por autoservicio. Los roles se modelan en la tabla `user_roles` (1:N); la columna escalar `users.role` queda retirada.
+>
+> **Actor Admin operativo (RFC-003, resuelve GAP-005):** el Admin deja de ser un actor sin historias. Se incorpora con capacidades, pantallas, permisos, panel de control y monitoreo de transacciones en el **§6 Módulo de Administración** (HU-018 a HU-021), con auditoría inmutable de sus acciones en `admin_audit_log`.
+
 ---
 
 ## 3. Roadmap de Desarrollo
@@ -62,7 +66,7 @@ Appatitas opera como un **Marketplace Transaccional de Servicios** donde la plat
 * **Criterios de Aceptación:**
   * Integración de OAuth 2.0 con Google y Facebook utilizando Supabase Auth.
   * Validación estricta de email único en el sistema.
-  * Creación automática de un registro en la tabla `users` con el atributo `role = 'tutor'` al completar el flujo.
+  * Creación automática de un registro en la tabla `users` y de una fila en `user_roles` con `role = 'tutor'` al completar el flujo (RFC-002).
   * Envío y verificación de email obligatorio antes de habilitar el acceso completo.
 
 #### HU-002: Completar Perfil de Tutor
@@ -99,7 +103,8 @@ Appatitas opera como un **Marketplace Transaccional de Servicios** donde la plat
 * **Criterios de Aceptación:**
   * Flujo de entrada diferenciado: selección explícitamente entre "Soy dueño de mascota" o "Ofrezco servicios profesionales".
   * Datos requeridos: nombre del negocio, categoría de servicio (selector múltiple), CUIT/DNI (para validación diferida), descripción (máx. 500 caracteres), radio de cobertura (KM) y punto de ubicación (pin en mapa o dirección).
-  * Estado inicial: `pending_approval`. Requiere validación del Administrador para pasar a `active`.
+  * Se agrega la fila `role = 'provider'` en `user_roles` (RFC-002). Si el usuario ya poseía el rol `tutor`, **acumula** ambos roles sin crear una cuenta nueva ni reemplazar el rol existente.
+  * Estado inicial: `pending_approval`. Requiere validación del Administrador (HU-020) para pasar a `active`.
   * No será visible ni aparecerá en módulos de búsqueda hasta poseer el estado `active`.
 
 #### HU-006: Galería Comercial y Horarios del Proveedor
@@ -235,10 +240,54 @@ Appatitas opera como un **Marketplace Transaccional de Servicios** donde la plat
 
 ---
 
-## 6. Cierre del Documento
+## 6. Módulo de Administración (RFC-003 — resuelve GAP-005)
+
+*Propósito operativo:* Habilitar al equipo interno de Appatitas para operar y moderar el marketplace. Sin este módulo, ningún Proveedor puede activarse, no hay moderación de la comunidad ni monitoreo de transacciones. El acceso queda restringido al rol `admin` (asignado solo internamente, RFC-002) y toda acción sensible se audita de forma inmutable en `admin_audit_log`.
+
+#### HU-018: Acceso y Permisos de Administrador
+* **Como** miembro del equipo interno de Appatitas,
+* **quiero** acceder a un área de administración protegida según mi rol,
+* **para** operar la plataforma con permisos acotados a mis capacidades.
+* **Criterios de Aceptación:**
+  * El área `/admin` es accesible únicamente para usuarios con el rol `admin` en `user_roles` (RFC-002). Cualquier otro usuario recibe acceso denegado.
+  * El rol `admin` **no** se obtiene por autoservicio: solo lo asigna otro Admin o el Dev Lead, registrándose en `admin_audit_log`.
+  * La sesión de Admin reutiliza Supabase Auth y la verificación de email (RN-004).
+
+#### HU-019: Panel de Control y Monitoreo de Transacciones
+* **Como** Admin,
+* **quiero** un panel de control con métricas de la plataforma y el estado de las transacciones,
+* **para** monitorear la salud del marketplace y detectar incidencias.
+* **Criterios de Aceptación:**
+  * Dashboard con métricas agregadas: usuarios registrados, Proveedores por estado, reportes activos de la comunidad.
+  * Monitoreo de transacciones: listado de reservas (`bookings`) con su estado y su historial de transiciones (`booking_status_events`). Disponible plenamente en Fase 2 (cuando existan reservas reales).
+  * Solo lectura: el panel no modifica transacciones; refleja el estado del sistema.
+
+#### HU-020: Aprobación y Gestión de Proveedores
+* **Como** Admin,
+* **quiero** revisar las solicitudes de Proveedores y aprobarlas, rechazarlas u otorgar el sello "Verificado",
+* **para** garantizar la calidad de la oferta antes de exponerla en las búsquedas.
+* **Criterios de Aceptación:**
+  * Listado de Proveedores en estado `pending_approval` con sus datos comerciales y CUIT/DNI.
+  * Acción de aprobar: transición `pending_approval` → `active` (RN-002, RN-025). Acción de rechazar con motivo.
+  * Otorgar/revocar el sello **"Verificado"** (RN-021) usado en la tarjeta de HU-016.
+  * Cada acción queda registrada en `admin_audit_log` (`provider_approved`, `provider_rejected`, `verified_badge_granted`, …).
+
+#### HU-021: Moderación de Reportes de la Comunidad
+* **Como** Admin,
+* **quiero** ocultar o cerrar reportes de mascotas perdidas/encontradas con contenido inadecuado,
+* **para** mantener la comunidad libre de spam o contenido ofensivo.
+* **Criterios de Aceptación:**
+  * El Admin puede cerrar un reporte de `lost_reports` por moderación, sin eliminación física.
+  * La acción registra el motivo en `admin_audit_log` (`report_hidden`).
+  * El reporte moderado deja de mostrarse en el mapa comunitario (HU-013).
+
+---
+
+## 7. Cierre del Documento
 
 * **Estado:** COMPLETO
-* **Versión final:** 1.1
-* **Fecha de cierre:** Mayo 2025
-* **Alcance cubierto:** Fase 1 (MVP) completa — HU-001 a HU-015 · Fase 2 parcial — HU-016 y HU-017.
+* **Versión final:** 1.2
+* **Fecha de cierre:** Mayo 2025 · Actualizado 2026-06-25 (RFC-001, RFC-002, RFC-003)
+* **Alcance cubierto:** Fase 1 (MVP) — HU-001 a HU-015 · Fase 2 — HU-016 y HU-017 · Módulo de Administración — HU-018 a HU-021.
+* **Cambios incorporados por RFC:** perfil del Tutor y `push_subscriptions` (RFC-001) · roles múltiples vía `user_roles` (RFC-002, GAP-004) · actor Admin y `admin_audit_log` (RFC-003, GAP-005).
 * **Este documento es la única fuente de verdad del sistema. Toda implementación debe validarse contra él.**

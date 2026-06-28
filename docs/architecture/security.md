@@ -1,7 +1,7 @@
 # Arquitectura de Seguridad — APPATITAS
-**Versión:** 1.0
-**Fuente:** `docs/SDD_MASTER.md` v1.1
-**Fecha:** Mayo 2025
+**Versión:** 1.1
+**Fuente:** `docs/SDD_MASTER.md` v1.2 · `docs/rfcs/RFC-001..003`
+**Fecha:** Mayo 2025 · Revisión: 2026-06-25 (RFC-002/003)
 
 Este documento describe exclusivamente los elementos de seguridad declarados o implicados directamente por el SDD_MASTER. No se documentan controles que no tengan base en dicho documento.
 
@@ -30,13 +30,29 @@ Definidos en HU-001:
 ## 2. Autorización
 
 ### 2.1 Roles del sistema
-Definidos en HU-001 (§ tabla `users`, campo `role`):
+Definidos en la tabla `user_roles` (RFC-002, resuelve GAP-004). Un usuario puede acumular varios roles; la columna escalar `users.role` quedó retirada.
 
-| Rol | Descripción | Acceso |
-|---|---|---|
-| `tutor` | Dueño de mascota. Consume servicios. | Gratuito |
-| `provider` | Proveedor de servicios. Genera revenue. | Requiere aprobación Admin (RN-002) |
-| `admin` | Equipo interno. Opera y modera la plataforma. | Interno |
+| Rol | Descripción | Acceso | Asignación |
+|---|---|---|---|
+| `tutor` | Dueño de mascota. Consume servicios. | Gratuito | Autoservicio (HU-001) |
+| `provider` | Proveedor de servicios. Genera revenue. | Requiere aprobación Admin (RN-002, HU-020) | Autoservicio (HU-005) |
+| `admin` | Equipo interno. Opera y modera la plataforma. | Interno | **Solo manual** (RFC-003, HU-018) — nunca autoservicio |
+
+**Roles múltiples (RFC-002):** una cuenta puede tener `tutor` + `provider` simultáneamente. La autorización por rol en RLS se evalúa con la función `has_role(auth.uid(), '<rol>')`, que consulta `user_roles`.
+
+### 2.1.1 Permisos del Administrador (RFC-003)
+
+El Admin opera el área `/admin`, protegida por `has_role(auth.uid(), 'admin')`. Capacidades y auditoría:
+
+| Capacidad | Entidad | HU | Registra en `admin_audit_log` |
+|---|---|---|---|
+| Aprobar / rechazar Proveedor | `providers.status`, `onboarding_status` | HU-020 | Sí |
+| Otorgar / revocar sello "Verificado" | `providers.verified` | HU-020 | Sí |
+| Ocultar / cerrar reporte por moderación | `lost_reports.status` | HU-021 | Sí |
+| Asignar rol `admin` a otro usuario | `user_roles` | HU-018 | Sí |
+| Ver dashboard y transacciones (solo lectura) | `bookings`, `booking_status_events`, agregados | HU-019 | No |
+
+La tabla `admin_audit_log` es **inmutable** (solo INSERT). Ver ADR-002 y `database.md` §3.14.
 
 ### 2.2 Control de visibilidad de Proveedores
 - Un Proveedor con `status = 'pending_approval'` **no aparece** en ningún módulo de búsqueda ni es accesible por Tutores (RN-002, HU-005).
@@ -52,7 +68,14 @@ Las siguientes rutas son accesibles sin autenticación según el SDD:
 | Reporte de mascota encontrada | HU-014 | Formulario público (ciudadano sin cuenta) |
 
 ### 2.4 Row Level Security (RLS)
-El SDD referencia Supabase como plataforma de base de datos. Supabase requiere RLS para proteger datos entre usuarios. **La política de RLS no está documentada en el SDD v1.1.** Ver GAP-014 en `docs/GAP_ANALYSIS.md`.
+El SDD referencia Supabase como plataforma de base de datos. Supabase requiere RLS para proteger datos entre usuarios. La política RLS detallada por tabla sigue pendiente (GAP-014), pero tras RFC-002/003 quedan fijadas estas bases:
+
+- La autorización por rol usa `has_role(auth.uid(), '<rol>')` sobre `user_roles` (RFC-002), no un claim escalar.
+- `user_roles`: cada usuario lee sus propios roles; la **asignación** del rol `admin` solo la puede hacer otro Admin (`has_role(auth.uid(),'admin')`).
+- `push_subscriptions` (RFC-001): cada usuario gestiona solo sus suscripciones (`user_id = auth.uid()`).
+- `admin_audit_log` (RFC-003): **solo INSERT**; lectura restringida a `admin`. Sin UPDATE ni DELETE para nadie.
+
+Ver GAP-014 en `docs/GAP_ANALYSIS.md` y ADR-002.
 
 ---
 
@@ -119,7 +142,10 @@ El SDD define los siguientes buckets. Las políticas de acceso no están documen
 |---|---|---|
 | `pets` | Foto de mascota | Tutor propietario (lectura pública posible en pasaporte) |
 | `providers` | Galería comercial | Público (visible en búsquedas y perfiles) |
-| `health_records` | Adjuntos clínicos | Privado — solo Tutor propietario y receptor del pasaporte compartido |
+| `health-records` | Adjuntos clínicos | Privado — solo Tutor propietario y receptor del pasaporte compartido |
+| `avatars` | Foto de perfil del Tutor | Público (confirmado por RFC-001, HU-002) |
+
+Adicionalmente, la tabla `push_subscriptions` (RFC-001) requiere RLS por usuario (`user_id = auth.uid()`); ver §7 (S-001 / GAP-014) y ADR-002.
 
 ---
 
@@ -137,5 +163,5 @@ Los siguientes aspectos de seguridad son relevantes para el sistema pero no est�
 | S-006 | Política de opt-in push notifications | HU-009, HU-012 | GAP-011 |
 | S-007 | Rate limiting en endpoints de notificación masiva | HU-012 | GAP-004 (análisis) |
 | S-008 | Validación técnica del CUIT/DNI del Proveedor | HU-005 | — |
-| S-009 | Política de acceso al bucket `health_records` en Storage | HU-010 | — |
+| S-009 | Política de acceso al bucket `health-records` en Storage | HU-010 | — |
 | S-010 | Moderación de contenido en reportes de mascotas perdidas (fotos) | HU-012, HU-014 | — |

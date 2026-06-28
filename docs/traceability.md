@@ -1,7 +1,7 @@
 # Matriz de Trazabilidad — APPATITAS
-**Versión:** 2.0
-**Fuente:** `docs/SDD_MASTER.md` v1.1
-**Fecha:** Mayo 2025
+**Versión:** 2.2
+**Fuente:** `docs/SDD_MASTER.md` v1.2 · `docs/rfcs/RFC-001..003`
+**Fecha:** Mayo 2025 · Revisión: 2026-06-25 (RFC-001/002/003)
 
 Toda referencia a reglas, tablas, APIs y componentes UI deriva exclusivamente del SDD_MASTER.
 Los elementos marcados con `*` están referenciados en el SDD pero sin especificación completa (ver `docs/GAP_ANALYSIS.md`).
@@ -22,7 +22,7 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | Dimensión | Elementos |
 |---|---|
 | **Reglas de negocio** | RN-004 (verificación de email obligatoria), RN-005 (email único) |
-| **Tablas** | `users` (INSERT: id, email, role = 'tutor', email_verified) |
+| **Tablas** | `users` (INSERT: id, email, email_verified), `user_roles` (INSERT: role = 'tutor' — RFC-002) |
 | **APIs / Servicios** | Supabase Auth (OAuth 2.0 Google, OAuth 2.0 Facebook, email+contraseña), Resend (email de verificación) |
 | **Componentes UI** | Pantalla de selección de rol ("Soy dueño de mascota" / "Ofrezco servicios"), Formulario de registro email/contraseña, Botones OAuth Google y Facebook, Pantalla de verificación de email pendiente |
 
@@ -33,8 +33,8 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | Dimensión | Elementos |
 |---|---|
 | **Reglas de negocio** | — |
-| **Tablas** | `users` (UPDATE: nombre completo, teléfono), `locations` (INSERT: barrio/zona, ciudad) |
-| **APIs / Servicios** | Supabase Storage (bucket avatars — nombre no especificado en SDD`*`), Supabase Auth (sesión activa) |
+| **Tablas** | `users` (UPDATE: `full_name`, `phone`, `avatar_url`, `location_id` — columnas de RFC-001), `locations` (INSERT: barrio/zona, ciudad) |
+| **APIs / Servicios** | Supabase Storage (bucket `avatars` — confirmado por RFC-001), Supabase Auth (sesión activa) |
 | **Componentes UI** | Formulario de perfil (nombre, teléfono, selector de barrio/zona de Córdoba), Selector de foto de avatar, Banner de progreso de perfil incompleto (porcentaje) |
 
 ---
@@ -66,7 +66,7 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | Dimensión | Elementos |
 |---|---|
 | **Reglas de negocio** | RN-002 (invisible hasta estado active), RN-025 (estado inicial pending_approval) |
-| **Tablas** | `users` (INSERT: role = 'provider'), `providers` (INSERT: business_name, description, categories, cuit_dni, radius_km, location_id, status = 'pending_approval', onboarding_status, billing_email, payout_method), `locations` (INSERT: coordenadas o dirección) |
+| **Tablas** | `user_roles` (INSERT: role = 'provider' — acumula sobre 'tutor' si existía · RFC-002), `providers` (INSERT: business_name, description, categories, cuit_dni, radius_km, location_id, status = 'pending_approval', onboarding_status, billing_email, payout_method), `locations` (INSERT: coordenadas o dirección) |
 | **APIs / Servicios** | Supabase Auth (OAuth 2.0 o email+contraseña), API de geolocalización nativa / input de dirección |
 | **Componentes UI** | Pantalla de selección de flujo ("Soy dueño" / "Ofrezco servicios"), Formulario de registro de proveedor (nombre del negocio, descripción, selector múltiple de categorías, CUIT/DNI, descripción 500 car.), Selector de radio de cobertura en KM, Input de ubicación con pin en mapa o dirección, Pantalla de confirmación (estado pending_approval) |
 
@@ -110,8 +110,8 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | Dimensión | Elementos |
 |---|---|
 | **Reglas de negocio** | RN-006 (alertas a 30/7/0 días del vencimiento), RN-007 (snooze +7 días) |
-| **Tablas** | `health_records` (READ: next_due_date para evaluación diaria; UPDATE: next_due_date += 7 días al hacer snooze) |
-| **APIs / Servicios** | Supabase Edge Functions (cron job diario), Resend (envío de email), Web Push API (notificación push al dispositivo) |
+| **Tablas** | `health_records` (READ: next_due_date para evaluación diaria; UPDATE: next_due_date += 7 días al hacer snooze), `push_subscriptions` (READ: suscripciones del Tutor para el canal push — RFC-001) |
+| **APIs / Servicios** | Supabase Edge Functions (cron job diario), Resend (envío de email), Web Push API (notificación push al dispositivo, lee `push_subscriptions`) |
 | **Componentes UI** | Panel de configuración de alertas por categorías`*`, Notificación push con acción de snooze interactivo, Email de alerta con enlace de snooze`*` |
 
 ---
@@ -143,8 +143,8 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | Dimensión | Elementos |
 |---|---|
 | **Reglas de negocio** | RN-012 (push masivo a usuarios en 5 KM), RN-013 (ciclo lost → found → closed) |
-| **Tablas** | `lost_reports` (INSERT: user_id, pet_id, type = 'lost', status = 'lost', photo_url, name, species, breed, color, sex, incident_date, location_id, behavior, contact_phone, reward_ars), `locations` (INSERT: última ubicación) |
-| **APIs / Servicios** | Supabase Storage (foto de la mascota), API de geolocalización nativa (pin en mapa), Web Push API (notificación masiva 5 KM), Supabase Edge Functions (dispara la notificación masiva) |
+| **Tablas** | `lost_reports` (INSERT: user_id, pet_id, type = 'lost', status = 'lost', photo_url, name, species, breed, color, sex, incident_date, location_id, behavior, contact_phone, reward_ars), `locations` (INSERT: última ubicación), `push_subscriptions` (READ: destinatarios en radio 5 KM — RFC-001) |
+| **APIs / Servicios** | Supabase Storage (foto de la mascota), API de geolocalización nativa (pin en mapa), Web Push API (notificación masiva 5 KM, lee `push_subscriptions`), Supabase Edge Functions (dispara la notificación masiva) |
 | **Componentes UI** | Formulario de reporte (selector de mascota registrada u opción anónima, foto, datos descriptivos, pin en mapa, comportamiento, teléfono, recompensa opcional en ARS), Confirmación de publicación |
 
 ---
@@ -165,8 +165,8 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | Dimensión | Elementos |
 |---|---|
 | **Reglas de negocio** | RN-014 (motor de coincidencias en radio de 3 KM) |
-| **Tablas** | `lost_reports` (INSERT: type = 'found', photo_url, species, color, location_id, contact_phone; READ: reportes abiertos con status = 'lost' para matching), `locations` (INSERT: punto de hallazgo) |
-| **APIs / Servicios** | Supabase Storage (foto de mascota encontrada), API de geolocalización nativa (pin en mapa), PostGIS `ST_DWithin` 3 KM (motor de coincidencias), Supabase Edge Functions (ejecuta matching y notifica), Web Push API (notificación a Tutores con búsquedas compatibles) |
+| **Tablas** | `lost_reports` (INSERT: type = 'found', photo_url, species, color, location_id, contact_phone; READ: reportes abiertos con status = 'lost' para matching), `locations` (INSERT: punto de hallazgo), `push_subscriptions` (READ: suscripciones de Tutores con reportes compatibles — RFC-001) |
+| **APIs / Servicios** | Supabase Storage (foto de mascota encontrada), API de geolocalización nativa (pin en mapa), PostGIS `ST_DWithin` 3 KM (motor de coincidencias), Supabase Edge Functions (ejecuta matching y notifica), Web Push API (notificación a Tutores con búsquedas compatibles, lee `push_subscriptions`) |
 | **Componentes UI** | Formulario simplificado (foto, especie, descripción física, pin en mapa, teléfono), Confirmación de envío, Pantalla de matches sugeridos`*` |
 
 ---
@@ -204,6 +204,50 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 
 ---
 
+## HU-018 — Acceso y Permisos de Administrador (RFC-003)
+
+| Dimensión | Elementos |
+|---|---|
+| **Reglas de negocio** | RN-004 (verificación de email), regla derivada: rol `admin` solo manual |
+| **Tablas** | `user_roles` (READ: verificar `role = 'admin'`; INSERT: asignar admin a otro usuario), `admin_audit_log` (INSERT: `role_granted`) |
+| **APIs / Servicios** | Supabase Auth (sesión), función RLS `has_role()` |
+| **Componentes UI** | Guard de área `/admin`, pantalla de acceso denegado para no-admin, gestión de roles de usuarios |
+
+---
+
+## HU-019 — Panel de Control y Monitoreo de Transacciones (RFC-003)
+
+| Dimensión | Elementos |
+|---|---|
+| **Reglas de negocio** | — (solo lectura) |
+| **Tablas** | `users`, `providers`, `lost_reports` (READ: métricas agregadas), `bookings`, `booking_status_events` (READ: monitoreo de transacciones — Fase 2) |
+| **APIs / Servicios** | Supabase Auth (sesión admin), consultas agregadas |
+| **Componentes UI** | Dashboard con métricas, listado de reservas con estado e historial de transiciones |
+
+---
+
+## HU-020 — Aprobación y Gestión de Proveedores (RFC-003)
+
+| Dimensión | Elementos |
+|---|---|
+| **Reglas de negocio** | RN-002 (visibilidad), RN-025 (estado inicial), RN-021 (sello "Verificado") |
+| **Tablas** | `providers` (UPDATE: status, onboarding_status, verified), `admin_audit_log` (INSERT: `provider_approved`/`provider_rejected`/`verified_badge_granted`) |
+| **APIs / Servicios** | Supabase Auth (sesión admin), función RLS `has_role('admin')` |
+| **Componentes UI** | Listado de Proveedores `pending_approval`, detalle con datos comerciales y CUIT/DNI, acciones aprobar/rechazar (con motivo), toggle sello "Verificado" |
+
+---
+
+## HU-021 — Moderación de Reportes de la Comunidad (RFC-003)
+
+| Dimensión | Elementos |
+|---|---|
+| **Reglas de negocio** | RN-013 (ciclo de vida del reporte), RN-015 (mapa público) |
+| **Tablas** | `lost_reports` (UPDATE: status por moderación), `admin_audit_log` (INSERT: `report_hidden`) |
+| **APIs / Servicios** | Supabase Auth (sesión admin), función RLS `has_role('admin')` |
+| **Componentes UI** | Cola de moderación de reportes, acción de ocultar/cerrar con motivo, confirmación |
+
+---
+
 ## Resumen Cruzado
 
 ### Tablas por frecuencia de acceso
@@ -221,6 +265,9 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 | `booking_status_events` | HU-017 |
 | `passport_shares` | HU-011 |
 | `service_areas` | HU-005, HU-016 |
+| `push_subscriptions` | HU-009, HU-012, HU-014 (RFC-001) |
+| `user_roles` | HU-001, HU-005, HU-018 (RFC-002) |
+| `admin_audit_log` | HU-018, HU-020, HU-021 (RFC-003) |
 
 ### APIs / Servicios externos por frecuencia de uso
 
@@ -239,7 +286,6 @@ Los elementos marcados con `*` están referenciados en el SDD pero sin especific
 
 | Elemento | HU | GAP |
 |---|---|---|
-| Nombre del bucket de avatars de Tutor | HU-002 | — |
 | Cascada de cancelación de reservas en baja de mascota | HU-004 | GAP-006 |
 | Tabla/bucket de adjuntos clínicos | HU-010 | — |
 | Peso histórico de mascota | HU-011 | GAP-009 |

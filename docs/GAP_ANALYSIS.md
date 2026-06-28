@@ -12,8 +12,8 @@
 | [GAP-001](#gap-001) | Historia incompleta | Crítica | HU-017 |
 | [GAP-002](#gap-002) | Requisito faltante | Crítica | HU-005, HU-016 |
 | [GAP-003](#gap-003) | Requisito faltante | Crítica | Flujo de valor §2.1 |
-| [GAP-004](#gap-004) | Decisión arquitectónica implícita | Alta | HU-001, HU-005 |
-| [GAP-005](#gap-005) | Requisito faltante | Alta | Admin (todos) |
+| [GAP-004](#gap-004) | Decisión arquitectónica implícita | ✅ Resuelto (RFC-002) | HU-001, HU-005 |
+| [GAP-005](#gap-005) | Requisito faltante | ✅ Resuelto (RFC-003) | Admin (todos) |
 | [GAP-006](#gap-006) | Contradicción | Alta | HU-004 |
 | [GAP-007](#gap-007) | Historia incompleta | Alta | HU-017 |
 | [GAP-008](#gap-008) | Decisión arquitectónica implícita | Alta | HU-016 |
@@ -91,6 +91,7 @@ Sin definir este paso, el dinero retenido por Mercado Pago no tiene disparador d
 ### GAP-004
 **Categoría:** Decisión arquitectónica implícita
 **Severidad:** Alta
+**Estado:** ✅ **RESUELTO (2026-06-25) por RFC-002.** Un usuario puede tener varios roles. Se modela con la tabla `user_roles` (1:N) y se retira `users.role`. Ver `docs/rfcs/RFC-002-roles-multiples-por-usuario.md`.
 **HU afectada:** HU-001, HU-005
 
 **Descripción:**
@@ -106,6 +107,7 @@ El SDD define un único campo `role` en la tabla `users` con valor `'tutor'`. Si
 ### GAP-005
 **Categoría:** Requisito faltante
 **Severidad:** Alta
+**Estado:** ✅ **RESUELTO (2026-06-25) por RFC-003.** El Admin se incorpora como actor de primera clase con HU-018 a HU-021 (acceso/permisos, panel y monitoreo de transacciones, aprobación de Proveedores, moderación de reportes) y auditoría inmutable en `admin_audit_log`. Ver `docs/rfcs/RFC-003-actor-administrador.md` y `docs/SDD_MASTER.md` §6.
 **HU afectada:** Actor Admin (todos los módulos)
 
 **Descripción:**
@@ -331,9 +333,10 @@ Si es solo informativo, no hay riesgo técnico. Si se espera que la plataforma g
 | Severidad | Cantidad | IDs |
 |---|---|---|
 | **Crítica** | 3 | GAP-001, GAP-002, GAP-003 |
-| **Alta** | 5 | GAP-004, GAP-005, GAP-006, GAP-007, GAP-008, GAP-009 |
-| **Media** | 8 | GAP-010, GAP-011, GAP-012, GAP-013, GAP-014, GAP-015, GAP-016 |
+| **Alta** | 6 | GAP-004, GAP-005, GAP-006, GAP-007, GAP-008, GAP-009 |
+| **Media** | 7 | GAP-010, GAP-011, GAP-012, GAP-013, GAP-014, GAP-015, GAP-016 |
 | **Baja** | 3 | GAP-017, GAP-018, GAP-019 |
+| **Total** | 19 | — |
 
 ## Orden de Resolución Recomendado
 
@@ -342,8 +345,10 @@ Los siguientes GAPs deben resolverse **antes de iniciar cualquier implementació
 1. **GAP-001** — Completar criterios de HU-017 (reservas).
 2. **GAP-002** — Definir porcentaje de comisión.
 3. **GAP-003** — Especificar mecanismo de verificación de servicio y liberación de fondos.
-4. **GAP-005** — Documentar historias de usuario del rol Admin.
+4. ~~**GAP-005** — Documentar historias de usuario del rol Admin.~~ ✅ Resuelto por RFC-003.
 5. **GAP-007** — Definir el ciclo de vida completo de estados de reserva.
 6. **GAP-006** — Resolver la dependencia de Fase 2 embebida en HU-004.
-7. **GAP-004** — Aclarar política de roles únicos vs múltiples por usuario.
+7. ~~**GAP-004** — Aclarar política de roles únicos vs múltiples por usuario.~~ ✅ Resuelto por RFC-002.
 8. **GAP-008** — Documentar el sistema de valoraciones (ratings).
+
+> **Estado de resolución (2026-06-25):** GAP-004 y GAP-005 resueltos por RFC-002 y RFC-003 respectivamente. Quedan pendientes los gaps críticos GAP-001, GAP-002, GAP-003 y GAP-007 (Sprint 5).

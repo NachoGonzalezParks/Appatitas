@@ -64,7 +64,7 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 
 ### Migrations
 
-- Archivo por cambio, no batch. Ej: `0013_rls_sprint1.sql`, `0014_push_token.sql`.
+- Archivo por cambio, no batch. Ej: `0014_rls_sprint1.sql`, `0015_alert_prefs.sql`.
 - Nunca modificar una migración ya aplicada en staging. Crear nueva.
 
 ---
@@ -74,7 +74,7 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 | Tarea | Descripción | Responsable |
 |---|---|---|
 | S0-01 | Inicializar proyecto Supabase, configurar `supabase/config.toml` | Dev 1 |
-| S0-02 | Crear las 11 tablas con columnas, tipos y constraints | Dev 1 |
+| S0-02 | Crear las 14 tablas con columnas, tipos y constraints (incl. `push_subscriptions`, `user_roles`, `admin_audit_log` y perfil Tutor en `users` · RFC-001/002/003) | Dev 1 |
 | S0-03 | Extensión PostGIS + índice GIST sobre `locations.coordinates` | Dev 1 |
 | S0-04 | Configurar Supabase Auth (email/contraseña, Google OAuth, Facebook OAuth) | Dev 3 |
 | S0-05 | Inicializar PWA: manifest, service worker, instalación A2HS | Dev 3 |
@@ -100,7 +100,7 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 **Dependencia crítica de Dev 2 sobre Dev 1:** Dev 2 no puede integrar login sin el trigger de Auth. Día 1: Dev 1 prioriza el trigger.
 
 **Decisión pendiente para este sprint (equipo completo):**
-- GAP-004: ¿puede un usuario ser Tutor Y Proveedor con la misma cuenta? Definir antes del Día 1.
+- GAP-004 (✅ resuelto por RFC-002): un usuario **sí** puede ser Tutor y Proveedor; los roles viven en `user_roles`. La UI necesita un selector de "rol activo".
 
 ---
 
@@ -110,14 +110,14 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 
 | Tarea | Dev 1 | Dev 2 | Dev 3 |
 |---|---|---|---|
-| **S2-01** Vacunas | RLS health_records, migración push_token | HealthDashboardPage, VaccinationFormPage, VaccineAlert | — |
+| **S2-01** Vacunas | RLS health_records, RLS push_subscriptions (RFC-001) | HealthDashboardPage, VaccinationFormPage, VaccineAlert | — |
 | **S2-02** Desparasitaciones | Migración alert_preferences JSONB | DewormingFormPage (con cálculo automático) | — |
 | **S2-03** Historial clínico | RLS bucket health-records (privado), HealthTimeline query | ClinicalVisitFormPage, HealthTimeline UI, AttachmentUploader | — |
 | **S2-04** Alertas de salud | RPC snooze (UPDATE atómico), verificar RLS en staging | AlertsSettingsPage (toggles), integración del snooze desde la app | Edge Function health-alerts-cron, integración Resend, solicitud de permiso push + registro de token en PWA |
 | **S2-05** Pasaporte | RLS passport_shares (anon con expiración), pgcrypto para hash | PassportPage (autenticada), PassportShareCard, ruta pública /passport/:hash | Pruebas Web Push end-to-end Android e iOS (A2HS) |
 
 **Dependencia crítica de Dev 3 sobre Dev 1:**
-Dev 3 no puede probar el cron sin la columna `push_token` en `users`. Dev 1 prioriza esa migración en Día 1.
+Dev 3 no puede probar el cron sin la tabla `push_subscriptions` (creada en Sprint 0 por RFC-001) y su RLS. Dev 1 prioriza la RLS de `push_subscriptions` en Día 1.
 
 **Decisión pendiente (equipo completo):**
 - GAP-010: ¿qué categorías de alerta además de vacunación y desparasitación? Definir antes de implementar el panel.
@@ -160,7 +160,7 @@ El botón "Tengo información" en LostPetCard (Dev 2) puede usarse antes de que 
 Al cierre de Sprint 4 debe existir al menos 1 Proveedor activo con schedules cargados. Dev 1 ejecuta el UPDATE manual de staging.
 
 **Decisiones pendientes (equipo completo):**
-- GAP-005: ¿cuándo se construirá el panel admin real? Si es Fase 2, documentarlo como RFC.
+- GAP-005 (✅ resuelto por RFC-003): el panel Admin existe como HU-018..021. La aprobación de Proveedores es HU-020. Priorizar HU-018 + HU-020 para no bloquear Sprint 5.
 - GAP-003: ¿qué documentación se le pide al Proveedor para verificación? Definir antes del Día 1 del sprint.
 
 ---
@@ -181,16 +181,31 @@ GAP-001 (criterios de HU-017) · GAP-002 (comisión) · GAP-003 (liberación de 
 
 ---
 
+## Módulo de Administración (HU-018 a HU-021 · RFC-003)
+
+El Admin es transversal. Reparto sugerido (detalle en `docs/technical-backlog.md` → Módulo de Administración):
+
+| Tarea | HU | Sprint | Dev 1 (Datos) | Dev 2 (Frontend) | Dev 3 (Plataforma) |
+|---|---|---|---|---|---|
+| Acceso y permisos de Admin | HU-018 | 1 | Función `has_role()`, RLS de `user_roles` y `admin_audit_log`, asignación manual del primer admin | Guard de `/admin`, pantalla de acceso denegado | — |
+| Aprobación de Proveedores | HU-020 | 4 | UPDATE seguro de `providers` + INSERT `admin_audit_log` (RPC) | Pantalla `/admin/proveedores` (aprobar/rechazar, sello Verificado) | — |
+| Moderación de la comunidad | HU-021 | 3 | UPDATE de `lost_reports` por moderación + audit | Cola de moderación `/admin/moderacion` | — |
+| Panel y monitoreo | HU-019 | 1 (base) / 5 (transacciones) | Vistas/consultas agregadas | Dashboard de métricas y reservas | — |
+
+> **Primer admin:** Dev 1 inserta manualmente `('<uuid>', 'admin')` en `user_roles` (vía SQL/Studio) para la cuenta del equipo. El rol admin nunca es autoservicio.
+
+---
+
 ## Matriz de dependencias críticas entre devs
 
 | Sprint | Dev 1 debe terminar esto primero | Para que Dev 2/3 pueda |
 |---|---|---|
-| Sprint 1, Día 1 | Trigger Auth→public.users | Dev 2: integrar el formulario de login |
-| Sprint 2, Día 1 | Migración `push_token` en `users` | Dev 3: registrar tokens en el cron |
+| Sprint 1, Día 1 | Trigger Auth→`public.users` + `user_roles` (RFC-002) y función `has_role()` | Dev 2: integrar el formulario de login y el rol activo |
+| Sprint 2, Día 1 | RLS de `push_subscriptions` (tabla creada en Sprint 0 · RFC-001) | Dev 3: registrar suscripciones y enviar push en el cron |
 | Sprint 2, Día 3 | RLS bucket health-records | Dev 2: subir adjuntos clínicos |
 | Sprint 3, Día 1 | RLS lost_reports | Dev 2: publicar reportes de pérdida |
 | Sprint 4, Día 1 | RLS providers + migración gallery_urls | Dev 2: formulario de registro de Proveedor |
-| Sprint 4, cierre | UPDATE manual Proveedor activo en staging | Sprint 5: tener datos con qué probar |
+| Sprint 4, cierre | Aprobar Proveedor vía HU-020 (o SQL como contingencia) | Sprint 5: tener datos con qué probar |
 | Sprint 5, Día 1 | UNIQUE constraint en bookings | Dev 3: no hay riesgo de doble reserva |
 
 ---
@@ -204,9 +219,14 @@ El equipo debe detener la implementación de las tareas afectadas hasta que esta
 | GAP-002: % de comisión de APPATITAS | Todo Sprint 5 | Comercial / Legal |
 | GAP-003: criterio de liberación de fondos al Proveedor | Sprint 5, pago | Product Owner + Mercado Pago |
 | GAP-001: criterios de aceptación de HU-017 | Sprint 5 completo | Product Owner |
-| GAP-004: ¿usuario puede ser Tutor Y Proveedor? | Sprint 1 (formulario de rol) | Product Owner |
-| GAP-005: ¿habrá panel admin en Fase 1? | Sprint 4 (aprobación de Proveedores) | Product Owner |
 | GAP-010: categorías de alertas de salud | Sprint 2 (panel de configuración) | Product Owner / Veterinario consultor |
+
+**Ya resueltas (vía RFC):**
+
+| Decisión | Resolución |
+|---|---|
+| GAP-004: ¿usuario puede ser Tutor Y Proveedor? | ✅ RFC-002 — sí, roles múltiples en `user_roles` |
+| GAP-005: ¿Admin con panel y capacidades? | ✅ RFC-003 — HU-018..021 + `admin_audit_log` |
 
 ---
 

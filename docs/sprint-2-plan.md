@@ -147,7 +147,7 @@ Disparador: cron '0 9 * * *'  (9:00 AM hora Argentina)
 Lógica:
   fechas_objetivo = [today, today+7, today+30]
 
-  registros = SELECT hr.*, p.user_id, u.email, u.push_token
+  registros = SELECT hr.*, p.user_id, u.email
               FROM health_records hr
               JOIN pets p ON p.id = hr.pet_id
               JOIN users u ON u.id = p.user_id
@@ -156,7 +156,9 @@ Lógica:
 
   Para cada registro:
     → Enviar email vía Resend (siempre)
-    → Si u.push_token IS NOT NULL → enviar Web Push
+    → Buscar suscripciones del Tutor en push_subscriptions (RFC-001):
+        SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = p.user_id
+    → Por cada suscripción encontrada → enviar Web Push
 
 Payload de push:
   {
@@ -174,9 +176,9 @@ Usuario toca "Posponer 7 días" en la notificación o en la app
      WHERE id = {record_id}
 ```
 
-**Registro de tokens push:**
-- Tabla implícita: columna `push_token TEXT` en `users` (actualizar migración de Sprint 0 si no existe).
-- Al cargar la PWA: `Notification.requestPermission()` → si 'granted' → `registration.pushManager.subscribe(VAPID)` → UPDATE `users.push_token`.
+**Registro de suscripciones push (RFC-001):**
+- La tabla `push_subscriptions` ya existe desde Sprint 0 (creada por RFC-001). No se requiere migración nueva en este sprint.
+- Al cargar la PWA: `Notification.requestPermission()` → si 'granted' → `registration.pushManager.subscribe(VAPID)` → INSERT en `push_subscriptions` (`endpoint`, `p256dh`, `auth`, `user_agent`). Si el `endpoint` ya existe (UNIQUE), no duplicar.
 
 **Panel de configuración (GAP-010):**
 Implementar como columna `alert_preferences JSONB` en `users`:
@@ -252,10 +254,12 @@ supabase/
 │   └── health-alerts-cron/
 │       └── index.ts                    — Cron HU-009
 └── migrations/
-    ├── 0014_add_push_token_to_users.sql  — Columna push_token en users
-    ├── 0015_add_alert_prefs_to_users.sql — Columna alert_preferences JSONB
-    └── 0016_rls_health_passport.sql      — RLS health_records + passport_shares
+    ├── 0014_add_alert_prefs_to_users.sql — Columna alert_preferences JSONB
+    ├── 0015_rls_health_passport.sql      — RLS health_records + passport_shares
+    └── 0016_rls_push_subscriptions.sql   — RLS push_subscriptions (user_id = auth.uid()) · RFC-001
 ```
+
+> Nota: la tabla `push_subscriptions` se crea en Sprint 0 (migración `0013`, RFC-001). Aquí solo se agrega su política RLS.
 
 ---
 
@@ -265,7 +269,7 @@ supabase/
 DÍA 1
 ├── Dev 1: RLS health_records (solo propietario de la mascota)
 │          RLS passport_shares (anon puede leer si no expiró)
-│          Migración push_token y alert_preferences en users
+│          RLS push_subscriptions (RFC-001) · migración alert_preferences en users
 └── Dev 2: HealthDashboardPage (selector de mascota + tabs por tipo)
            VaccinationFormPage con alerta visual RN-022
 

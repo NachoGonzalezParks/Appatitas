@@ -173,7 +173,7 @@ Tutor selecciona slot + mascota
     → Si payment.status = 'approved':
         UPDATE bookings SET status = 'confirmed'
         INSERT booking_status_events { from: 'pending_payment', to: 'confirmed' }
-        sendPush(provider.push_token, "Nueva reserva confirmada")
+        sendPush(provider push_subscriptions, "Nueva reserva confirmada")  -- RFC-001
         sendEmail(provider.billing_email, "Nueva reserva")
     → Si payment.status = 'rejected':
         UPDATE bookings SET status = 'payment_failed'

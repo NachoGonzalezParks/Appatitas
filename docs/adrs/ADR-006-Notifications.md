@@ -90,7 +90,7 @@ INSERT en lost_reports WHERE type = 'found'
 - **Notificaciones masivas sin throttling:** La notificación de HU-012 a todos los usuarios en un radio de 5 KM no tiene política de rate limiting ni priorización documentada en el SDD. En zonas densas de Córdoba, un único reporte podría disparar miles de push simultáneos sobre la Edge Function. Ver GAP-011 en `docs/GAP_ANALYSIS.md`.
 - **Usuarios sin permiso push:** El SDD no documenta el comportamiento cuando el usuario denegó el permiso de notificaciones push. Los registros de pérdida no llegarían por push; solo por email (si corresponde a HU-009). Para HU-012, no habría canal alternativo.
 - **Panel de configuración de alertas (HU-009):** El SDD menciona un "panel de configuración de alertas por categorías" sin especificar qué categorías se pueden desactivar ni el estado por defecto (opt-in vs opt-out). El esquema de preferencias de usuario no puede diseñarse sin esta definición. Ver GAP-010.
-- **Tokens push:** La gestión (registro, renovación y baja) de tokens de dispositivos Web Push no está documentada en el SDD. Requiere una tabla de tokens en base de datos no especificada.
+- **Tokens push:** ~~La gestión (registro, renovación y baja) de tokens de dispositivos Web Push no está documentada en el SDD. Requiere una tabla de tokens en base de datos no especificada.~~ **Resuelto por RFC-001 (2026-06-25):** las suscripciones Web Push se almacenan en la tabla `push_subscriptions` (`endpoint`, `p256dh`, `auth`, `user_agent`), con relación 1:N por usuario. La baja de suscripciones expiradas se gestiona al detectar un endpoint caducado en el envío (ver `docs/system-architecture.md` §8.2). Ver `docs/rfcs/RFC-001-perfil-tutor-y-push-subscriptions.md`.
 
 ---
 

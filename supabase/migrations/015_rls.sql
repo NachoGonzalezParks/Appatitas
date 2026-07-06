@@ -46,10 +46,8 @@ CREATE POLICY "users_update"
   ON users FOR UPDATE
   USING (id = auth.uid());
 
--- INSERT lo ejecuta el trigger de Supabase Auth (service_role), no el usuario directamente
-CREATE POLICY "users_insert_service"
-  ON users FOR INSERT
-  WITH CHECK (id = auth.uid());
+-- INSERT lo ejecuta el trigger de Supabase Auth via service_role, que ignora RLS por diseño.
+-- No se necesita política de INSERT aquí: ningún usuario normal puede insertar en users directamente.
 
 
 -- ─────────────────────────────────────────────
@@ -250,11 +248,11 @@ CREATE POLICY "service_areas_delete"
 -- ─────────────────────────────────────────────
 ALTER TABLE lost_reports ENABLE ROW LEVEL SECURITY;
 
--- Reportes activos son públicos (HU-013); el dueño y admin ven todos los suyos
+-- Reportes lost y found son públicos (HU-013, HU-014); closed solo el dueño y admin
 CREATE POLICY "lost_reports_select"
   ON lost_reports FOR SELECT
   USING (
-    status = 'lost'
+    status IN ('lost', 'found')
     OR user_id = auth.uid()
     OR has_role(auth.uid(), 'admin')
   );
@@ -359,3 +357,6 @@ CREATE POLICY "admin_audit_log_select"
 CREATE POLICY "admin_audit_log_insert"
   ON admin_audit_log FOR INSERT
   WITH CHECK (has_role(auth.uid(), 'admin') AND admin_id = auth.uid());
+
+-- UPDATE y DELETE bloqueados intencionalmente: tabla inmutable por diseño (RFC-003).
+-- Con RLS habilitado y sin políticas de UPDATE/DELETE, Supabase las bloquea automáticamente.

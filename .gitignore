@@ -1,0 +1,39 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+dist-ssr/
+*.local
+
+# Cache de Vite
+.vite/
+node_modules/.vite/
+
+# Variables de entorno (solo se versiona .env.example)
+.env
+.env.local
+.env.staging
+.env.production
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / SO
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Supabase (CLI local)
+supabase/.branches/
+supabase/.temp/

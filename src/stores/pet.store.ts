@@ -32,14 +32,15 @@ export const petStore = reactive<PetState>({
 })
 
 export async function loadPets() {
-  if (!authStore.user) return
+  const user = authStore.user
+  if (!user) return
 
   petStore.loading = true
 
   const { data } = await supabase
     .from('pets')
     .select('*')
-    .eq('user_id', authStore.user.id)
+    .eq('user_id', user.id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
 

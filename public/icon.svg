@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="APPATITAS">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <g fill="#ffffff">
+    <ellipse cx="256" cy="320" rx="86" ry="70"/>
+    <ellipse cx="168" cy="232" rx="40" ry="52"/>
+    <ellipse cx="344" cy="232" rx="40" ry="52"/>
+    <ellipse cx="214" cy="168" rx="34" ry="44"/>
+    <ellipse cx="298" cy="168" rx="34" ry="44"/>
+  </g>
+</svg>

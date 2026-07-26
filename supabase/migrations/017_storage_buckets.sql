@@ -6,6 +6,23 @@
 -- Autor: dev3 (tarea S0-05, Storage). Como toca RLS/seguridad, requiere revisión
 -- de Dev1 (dominio de migraciones y seguridad).
 --
+-- ─────────────────────────────────────────────
+-- CÓMO SE USA ESTE ARCHIVO (leer antes de tocar Storage)
+-- ─────────────────────────────────────────────
+-- Esto es la "receta" / fuente de verdad de los buckets: qué buckets existen,
+-- cuáles son públicos o privados, y quién puede leer y subir en cada uno.
+--
+-- Hoy el equipo maneja Storage POR EL PANEL de Supabase (no por CLI). Por eso:
+--   1) Los buckets se crean a mano / vía API en staging (tarea de dev3).
+--   2) Las políticas de acceso (los CREATE POLICY de más abajo) NO se arman con
+--      los botones del panel: se copian y pegan en el SQL Editor de Supabase.
+--   3) Este archivo NO se corre como migración automática: queda como el MANUAL
+--      versionado de Storage, para recrear los buckets IDÉNTICOS en producción
+--      (o si se resetea staging) sin depender de la memoria de nadie.
+--
+-- En resumen: aunque los buckets se creen a mano, mantené este archivo en sync
+-- como el único "manual" de Storage del proyecto.
+--
 -- Convención de rutas (system-architecture §5.1). La RLS usa el PRIMER segmento
 -- de la ruta como identificador del dueño:
 --   avatars/{user_id}/avatar.{ext}

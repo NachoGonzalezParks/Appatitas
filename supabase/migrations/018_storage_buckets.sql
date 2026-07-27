@@ -1,5 +1,6 @@
--- 017_storage_buckets.sql
+-- 018_storage_buckets.sql
 -- Buckets de Supabase Storage y sus políticas de acceso (S0-05).
+-- (Renumerado de 017 → 018: master ya tiene 017_grants.sql de Dev1.)
 -- Fuente: docs/sprint-0-plan.md §2.4 · docs/architecture/database.md §4 ·
 --         docs/system-architecture.md §5.1 (convención de rutas).
 --

@@ -1,10 +1,13 @@
 import { reactive } from 'vue'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import type { UserRole } from '../shared/types/supabase.types'
 
 // Roles del sistema (RFC-002). Un usuario puede acumular varios roles;
 // viven en la tabla `user_roles`, no en `users.role`.
-export type UserRole = 'tutor' | 'provider' | 'admin'
+// UserRole se importa de los tipos generados (única fuente de verdad) y se
+// re-exporta para conservar la API pública del store.
+export type { UserRole }
 
 interface AuthState {
   user: User | null

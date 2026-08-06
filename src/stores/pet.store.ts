@@ -1,23 +1,10 @@
 import { reactive } from 'vue'
 import { supabase } from '../lib/supabase'
 import { authStore } from './auth.store'
+import type { Database } from '../shared/types/supabase.types'
 
-interface Pet {
-  id: string
-  user_id: string
-  name: string
-  species: string
-  breed: string
-  birth_date: string | null
-  sex: string | null
-  weight_kg: number | null
-  color_marks: string | null
-  microchip_id: string | null
-  photo_url: string | null
-  deleted_at: string | null
-  created_at: string
-  updated_at: string
-}
+// Tipo de mascota derivado de los tipos generados (única fuente de verdad).
+type Pet = Database['public']['Tables']['pets']['Row']
 
 interface PetState {
   pets: Pet[]

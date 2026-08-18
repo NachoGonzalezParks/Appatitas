@@ -34,6 +34,7 @@ Los siguientes documentos constituyen la fuente de verdad del sistema en su vers
 | **ADR-004** | `docs/adrs/ADR-004-MercadoPago-Escrow.md` | Mercado Pago Marketplace como gateway | 🔒 Aceptado |
 | **ADR-005** | `docs/adrs/ADR-005-PWA-Architecture.md` | PWA como arquitectura de frontend | 🔒 Aceptado |
 | **ADR-006** | `docs/adrs/ADR-006-Notifications.md` | Notificaciones push y email | 🔒 Aceptado |
+| **ADR-007** | `docs/adrs/ADR-007-Testing.md` | Estrategia de testing (Vitest + Playwright) | 🔒 Aceptado |
 
 ---
 
@@ -94,6 +95,7 @@ Las siguientes 14 tablas constituyen el esquema autorizado. No se puede crear ni
 | Pagos y escrow | Mercado Pago Marketplace | ADR-004 |
 | Frontend | Progressive Web App (PWA) | ADR-005 |
 | Notificaciones | Resend (email) + Web Push API + Supabase Edge Functions | ADR-006 |
+| Testing | Vitest (unit) + Playwright (e2e) | ADR-007 |
 
 ---
 

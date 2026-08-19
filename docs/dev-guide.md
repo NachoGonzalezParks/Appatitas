@@ -74,6 +74,7 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 - Scripts: `npm run test` (unit), `npm run test:watch`, `npm run test:e2e`.
 - Antes del primer e2e: `npx playwright install chromium`.
 - **Definition of Done:** cada HU incorpora al menos 1 test de su flujo principal antes de mergear.
+- **Guía práctica** (cómo correr, escribir con ayuda de IA y qué probar en cada sprint): `docs/testing.md`.
 
 ---
 

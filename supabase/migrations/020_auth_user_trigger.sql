@@ -1,4 +1,4 @@
--- 019_auth_user_trigger.sql
+-- 020_auth_user_trigger.sql
 -- Trigger de registro (S0-04 / HU-001): al crear un usuario en auth.users,
 -- crea su fila en public.users y su rol en user_roles (RFC-002).
 --

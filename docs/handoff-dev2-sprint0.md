@@ -86,7 +86,7 @@ Borrarlo solo si el equipo decide archivarlo → mover a `docs/archive/`, nunca 
   > 1. Sí — inserta en `public.users` (id, email, email_verified) **y** en `user_roles` (user_id, role).
   > 2. clave del metadata = `role` → lee `raw_user_meta_data->>'role'` (Dev 2 manda `options: { data: { role } }`).
   > 3. rol por defecto = `tutor` (HU-001). Si no viene o no es `tutor`/`provider`, cae a `tutor`. Nunca `admin` por esta vía.
-- **Resuelto:** 2026-08-09 — Ale (dev3). Trigger implementado en `supabase/migrations/019_auth_user_trigger.sql` (alta: perfil + rol; sincroniza `email_verified` al confirmar). Pendiente de revisión de Dev 1 y merge.
+- **Resuelto:** 2026-08-09 — Ale (dev3). Trigger implementado en `supabase/migrations/020_auth_user_trigger.sql` (alta: perfil + rol; sincroniza `email_verified` al confirmar). Pendiente de revisión de Dev 1 y merge.
 
 ### ✅ D3-3 — Clave pública VAPID
 - [x] Hecho

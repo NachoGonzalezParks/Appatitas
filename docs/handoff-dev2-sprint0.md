@@ -69,30 +69,30 @@ Borrarlo solo si el equipo decide archivarlo → mover a `docs/archive/`, nunca 
 
 ## Pedidos a Dev 3 (Plataforma / Integraciones)
 
-### 🟡 D3-1 — Supabase Auth habilitado
-- [ ] Hecho
+### ✅ D3-1 — Supabase Auth habilitado
+- [x] Hecho
 - **Qué:** email/contraseña + Google OAuth activados en el proyecto (Facebook puede quedar pendiente de Meta).
 - **Para qué:** `initAuth()` / `getSession()` y el login de Sprint 1 necesitan Auth encendida. Hoy el guard funciona pero nunca hay sesión.
-- **Resuelto:** _(fecha — quién)_
+- **Resuelto:** 2026-08-09 — Ale (dev3). Email/contraseña con verificación obligatoria + Google OAuth activados y verificados en staging (authorize → Google, client_id correcto, scopes email/profile). Facebook queda diferido con feature flag (PR #21).
 
-### 🟡 D3-2 — Contrato del trigger `Auth → public.users + user_roles` ⭐
-- [ ] Hecho
+### ✅ D3-2 — Contrato del trigger `Auth → public.users + user_roles` ⭐
+- [x] Hecho
 - **Por qué:** es el contrato Dev2↔Dev3 del registro (Sprint 1, HU-001). El `auth.store` de Dev 2 hace `loadRoles()` leyendo `user_roles`; si el rol no se inserta con la clave esperada, el usuario queda sin rol.
 - **Qué necesito confirmar por escrito:**
   1. ¿El trigger inserta en `public.users` **y** en `user_roles` al registrarse el usuario?
   2. ¿De qué campo del metadata toma el rol? (p. ej. `raw_user_meta_data->>'role'`). Dev 2 en el signup manda `options: { data: { role } }` → necesito el **nombre exacto** de la clave.
   3. ¿Qué rol asigna por defecto si no viene metadata?
-- **Respuesta de Dev 3 (completar acá):**
-  > 1. …
-  > 2. clave del metadata = `…`
-  > 3. rol por defecto = `…`
-- **Resuelto:** _(fecha — quién)_
+- **Respuesta de Dev 3:**
+  > 1. Sí — inserta en `public.users` (id, email, email_verified) **y** en `user_roles` (user_id, role).
+  > 2. clave del metadata = `role` → lee `raw_user_meta_data->>'role'` (Dev 2 manda `options: { data: { role } }`).
+  > 3. rol por defecto = `tutor` (HU-001). Si no viene o no es `tutor`/`provider`, cae a `tutor`. Nunca `admin` por esta vía.
+- **Resuelto:** 2026-08-09 — Ale (dev3). Trigger implementado en `supabase/migrations/020_auth_user_trigger.sql` (alta: perfil + rol; sincroniza `email_verified` al confirmar). Pendiente de revisión de Dev 1 y merge.
 
-### 🟡 D3-3 — Clave pública VAPID
-- [ ] Hecho
+### ✅ D3-3 — Clave pública VAPID
+- [x] Hecho
 - **Qué:** `VITE_VAPID_PUBLIC_KEY` (la privada queda solo en las Edge Functions).
 - **Para qué:** suscribir el navegador a Web Push. No bloquea Sprint 0; necesaria para Sprint 2 (HU-009/012/014) y va en el `.env`.
-- **Resuelto:** _(fecha — quién)_
+- **Resuelto:** 2026-08-09 — Ale (dev3). Clave pública (no secreta): `BGwlNZoOh5NhPlO8MAWja06C1Dzy8BF9z-_Woz3K-7Vb2a0ROefh2rR8Z5tNWrgIPL_xGGjHPlosnZdDuZc-Hs8`. Cargarla en `VITE_VAPID_PUBLIC_KEY`. La privada va solo a las Edge Functions por canal seguro. Ver `docs/setup/vapid-keys.md`.
 
 ---
 

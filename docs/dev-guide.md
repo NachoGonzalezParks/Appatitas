@@ -67,6 +67,15 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 - Archivo por cambio, no batch. Ej: `0014_rls_sprint1.sql`, `0015_alert_prefs.sql`.
 - Nunca modificar una migración ya aplicada en staging. Crear nueva.
 
+### Testing (RFC-004 / ADR-007)
+
+- **Vitest** para tests unitarios (`tests/unit/**/*.spec.ts`) — lógica pura y componentes Vue.
+- **Playwright** para tests e2e (`tests/e2e/**/*.e2e.ts`) — flujos completos en el navegador.
+- Scripts: `npm run test` (unit), `npm run test:watch`, `npm run test:e2e`.
+- Antes del primer e2e: `npx playwright install chromium`.
+- **Definition of Done:** cada HU incorpora al menos 1 test de su flujo principal antes de mergear.
+- **Guía práctica** (cómo correr, escribir con ayuda de IA y qué probar en cada sprint): `docs/testing.md`.
+
 ---
 
 ## Sprint 0 — Infraestructura base (1 semana)

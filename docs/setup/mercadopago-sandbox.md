@@ -14,23 +14,27 @@
 
 ## FASE 0 — Cuenta
 
-- [ ] Tener/crear una cuenta de **Mercado Pago**. Para sandbox alcanza una cuenta común (sin CUIT).
-- [ ] **[Decisión de equipo]** Idealmente la cuenta va a nombre **del proyecto**, no personal
+- [X] Tener/crear una cuenta de **Mercado Pago**. Para sandbox alcanza una cuenta común (sin CUIT).
+- [X] **[Decisión de equipo]** Idealmente la cuenta va a nombre **del proyecto**, no personal
   (igual que Meta/Google). Para empezar a probar, una personal sirve.
 
 ## FASE 1 — Crear la aplicación
 
-- [ ] Entrar a **developers.mercadopago.com** → **"Tus integraciones"** → **Crear aplicación**.
-- [ ] Nombre: `APPATITAS` (provisorio). Producto: **Pagos / Checkout** (para el marketplace se usa
+- [X] Entrar a **developers.mercadopago.com** → **"Tus integraciones"** → **Crear aplicación**.
+- [X] Nombre: `APPATITAS` (provisorio). Producto: **Pagos / Checkout** (para el marketplace se usa
   el modelo con *split* de comisión, que se configura en Sprint 5).
 
-## FASE 2 — Credenciales de prueba
+## FASE 2 — Credenciales y modo de prueba (según el producto)
 
-- [ ] En la app → **Credenciales de prueba (TEST)**. Copiar:
-  - **Public Key** (`TEST-...`) → va al cliente.
-  - **Access Token** (`TEST-...`) → **secreto**, solo servidor (Edge Functions).
-- [ ] Anotar también **Client ID** y **Client Secret** de la app → se necesitan en Sprint 4 para el
-  *onboarding* de proveedores (OAuth Marketplace).
+> ⚠️ **Con Checkout Pro NO se "activan credenciales de prueba".** Ese botón (y las
+> "Credenciales de prueba" con prefijo `TEST-...`) es solo para **Checkout API / Bricks**;
+> en Checkout Pro intentar activarlas **da error** (`DXT40`). En **Checkout Pro** (el que usa
+> APPATITAS, ADR-004 + `sprint-5-plan`) la prueba se hace con **cuentas de prueba** (Fase 3)
+> \+ **tarjetas de prueba** (Fase 4). **No cambies de producto** solo por ese botón.
+
+- [ ] **Credenciales de la app** (se usan al implementar, Sprint 5): **Public Key**, **Access
+  Token** y **Client ID / Client Secret** están en **Configuración de la aplicación →
+  Credenciales**. El **Access Token es secreto** (solo servidor / Edge Functions).
 
 ## FASE 3 — Usuarios de prueba
 

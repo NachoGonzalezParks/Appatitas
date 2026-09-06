@@ -1,19 +1,19 @@
 import { reactive } from 'vue'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { UserRole } from '../shared/types/supabase.types'
 
-// Roles del sistema (RFC-002). Un usuario puede acumular varios roles;
-// viven en la tabla `user_roles`, no en `users.role`.
-// UserRole se importa de los tipos generados (única fuente de verdad) y se
-// re-exporta para conservar la API pública del store.
-export type { UserRole }
+// Roles de la app (RFC-002). Un usuario puede acumular varios roles; viven en la
+// tabla `user_roles`, no en `users.role`.
+// Nota: en los tipos generados, `UserRole` es el Row de user_roles y la columna
+// `role` se tipa como `string` (nace de un CHECK, no de un enum de Postgres).
+// Para el "rol activo" de la UI usamos este union semántico propio.
+export type AppRole = 'tutor' | 'provider' | 'admin'
 
 interface AuthState {
   user: User | null
   session: Session | null
   roles: string[]
-  activeRole: UserRole | null
+  activeRole: AppRole | null
   loading: boolean
 }
 
@@ -59,7 +59,7 @@ async function loadRoles(userId: string) {
   // Rol activo por defecto: el primero disponible. El usuario puede cambiarlo
   // con setActiveRole() si tiene más de un rol.
   if (!authStore.activeRole && authStore.roles.length > 0) {
-    authStore.activeRole = authStore.roles[0] as UserRole
+    authStore.activeRole = authStore.roles[0] as AppRole
   }
 }
 
@@ -68,7 +68,7 @@ export function hasRole(role: string): boolean {
 }
 
 // Aporte Dev2 (RFC-002): selector de "rol activo" para cuentas con varios roles.
-export function setActiveRole(role: UserRole): void {
+export function setActiveRole(role: AppRole): void {
   if (authStore.roles.includes(role)) {
     authStore.activeRole = role
   }

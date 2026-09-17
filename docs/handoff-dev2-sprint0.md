@@ -37,8 +37,8 @@ Borrarlo solo si el equipo decide archivarlo → mover a `docs/archive/`, nunca 
 
 ## Pedidos a Dev 1 (Datos)
 
-### 🟡 D1-1 — Regenerar `src/shared/types/supabase.types.ts` en formato conforme a supabase-js
-- [ ] Hecho
+### ✅ D1-1 — Regenerar `src/shared/types/supabase.types.ts` en formato conforme a supabase-js
+- [x] Hecho
 - **Por qué:** el archivo actual está escrito a mano y no es válido para el cliente tipado. Al hacer `createClient<Database>()`, **todas** las queries colapsan a `never` (falla `type-check`).
 - **Qué falta concretamente:**
   - En `public`: agregar `Views`, `Functions`, `Enums`, `CompositeTypes` (aunque vayan vacías, p. ej. `Views: { [_ in never]: never }`).
@@ -50,14 +50,14 @@ Borrarlo solo si el equipo decide archivarlo → mover a `docs/archive/`, nunca 
   # o: supabase gen types typescript --project-id <ref> > src/shared/types/supabase.types.ts
   ```
 - **Bloquea:** cliente Supabase tipado (queries type-safe). Referencia: `TODO(Dev1 · S0-01)` en `src/lib/supabase.ts`.
-- **Resuelto:** _(fecha — quién — commit/PR)_
+- **Resuelto:** 2026-09-17 — Trini (dev1). Archivo regenerado en formato supabase-js conforme: Views/Functions/Enums/CompositeTypes y Relationships en cada tabla. Cliente tipado habilitado en `src/lib/supabase.ts`.
 
-### 🟡 D1-2 — Credenciales del proyecto Supabase de **staging**
-- [ ] Hecho
+### ✅ D1-2 — Credenciales del proyecto Supabase de **staging**
+- [x] Hecho
 - **Qué:** `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` de staging (valores anon/públicos; compartir por canal seguro del equipo, no por el chat abierto).
 - **Para qué:** cargar `.env.local` y cumplir el criterio de S0-06 *"el cliente conecta al proyecto staging"* + probar login real.
 - **Bloquea:** verificación de conexión real (hoy la app cae a Supabase local por defecto).
-- **Resuelto:** _(fecha — quién — cómo se entregó)_
+- **Resuelto:** 2026-09-17 — Trini (dev1). Credenciales entregadas por canal privado (WhatsApp).
 
 ### 🟡 D1-3 — Confirmar que las migraciones corren en local (Supabase CLI)
 - [ ] Hecho

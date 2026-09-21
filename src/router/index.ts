@@ -19,6 +19,24 @@ const privateRoutes: RouteRecordRaw[] = [
     meta: { public: false },
   },
   {
+    path: '/mascotas',
+    name: 'pets',
+    component: () => import('@/bc02-profiles/pages/PetListPage.vue'),
+    meta: { public: false },
+  },
+  {
+    path: '/mascotas/nueva',
+    name: 'pet-new',
+    component: () => import('@/bc02-profiles/pages/PetFormPage.vue'),
+    meta: { public: false },
+  },
+  {
+    path: '/mascotas/:id/editar',
+    name: 'pet-edit',
+    component: () => import('@/bc02-profiles/pages/PetFormPage.vue'),
+    meta: { public: false },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/bc01-identity/pages/LoginPage.vue'),

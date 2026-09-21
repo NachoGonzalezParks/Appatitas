@@ -18,6 +18,18 @@ const privateRoutes: RouteRecordRaw[] = [
     component: () => import('@/bc01-identity/pages/LoginPage.vue'),
     meta: { public: true },
   },
+  {
+    path: '/registro',
+    name: 'register',
+    component: () => import('@/bc01-identity/pages/RegisterPage.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/verificar-email',
+    name: 'email-verify',
+    component: () => import('@/bc01-identity/pages/EmailVerifyPage.vue'),
+    meta: { public: true },
+  },
 ]
 
 const routes: RouteRecordRaw[] = [

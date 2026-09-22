@@ -95,14 +95,29 @@ Igual que el handoff principal: los ítems **no se borran**, se marcan resueltos
 
 ## Opcional / a definir
 
-### 🟡 DB-4 — Estrategia de verificación de email + Google OAuth en local
-- [ ] Hecho
+### ✅ DB-4 — Estrategia de verificación de email + Google OAuth en local
+- [x] Hecho
 - **Contexto:** HU-001 exige verificación de email (RN-004). En local, Supabase captura los mails en **Inbucket** (puerto 54324). Para Google OAuth en local hacen falta `client_id`/`client_secret` cargados vía variables de entorno de la CLI.
 - **Qué necesito que Dev 1 (con Dev 3) defina:**
   1. ¿En local dejamos `enable_confirmations = false` (signup directo) o `true` leyendo el mail desde Inbucket?
   2. ¿Google OAuth se prueba en local (config extra) o queda solo para staging y en local usamos email/contraseña?
+- **Respuesta de Dev 3 (Auth):**
+  > **1. `enable_confirmations = true` en local.** El estado verificado / sin verificar es
+  > parte del funcionamiento de la app (RN-004), así que conviene reproducirlo también en
+  > local, no saltearlo. La confirmación se hace desde **Inbucket** (`localhost:54324`):
+  > abrir el mail ficticio y clickear el link tiene **el mismo efecto** que una verificación
+  > real (setea `email_confirmed_at`). Beneficio extra: ese paso ejercita la segunda parte
+  > del trigger `020` (`handle_email_confirmed` → `email_verified = true`), con lo cual el
+  > trigger completo queda probado en local.
+  > → **Acción para DB-1:** en el `config.toml` que se versione, `[auth.email] enable_confirmations = true`
+  > (corrige el `false` tentativo del borrador de DB-1).
+  >
+  > **2. Google OAuth: solo staging.** En local se usa **email/contraseña**. Montar
+  > `client_id`/`client_secret` con redirect a `localhost` en cada máquina es fricción extra;
+  > Google ya está activado y verificado en staging (ver handoff Sprint 0, D3-1). Así nadie
+  > se traba por OAuth en su copia local.
 - **Nota:** no bloquea el arranque de S1-01 con email/contraseña; es para dejar el criterio claro.
-- **Resuelto:** _(fecha — quién)_
+- **Resuelto:** 2026-09-12 — Ale (dev3). Definición de Auth en local: verificación de email **activada** (vía Inbucket) + Google OAuth **solo en staging**.
 
 ---
 

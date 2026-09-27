@@ -1,5 +1,5 @@
 import type { NavigationGuardWithThis } from 'vue-router'
-import { isAuthenticated } from '@/stores/auth.store'
+import { authStore, isAuthenticated } from '@/stores/auth.store'
 
 // Guard de autenticación (S0-06, Día 3).
 // - Rutas con meta.public → acceso libre (sin sesión).
@@ -14,7 +14,10 @@ export const authGuard: NavigationGuardWithThis<undefined> = (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  // TODO(Sprint 1 · S1-01/RN-004): además exigir email verificado
-  //   if (!authStore.user?.email_confirmed_at) return { name: 'email-verify' }
+  // RN-004: sin email verificado no hay acceso completo a rutas privadas.
+  if (!authStore.user?.email_confirmed_at) {
+    return { name: 'email-verify', query: { email: authStore.user?.email ?? '' } }
+  }
+
   return true
 }

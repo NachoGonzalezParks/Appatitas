@@ -25,6 +25,17 @@ export const authStore = reactive<AuthState>({
   loading: true,
 })
 
+// Promesa que se resuelve cuando la sesión inicial ya fue restaurada.
+// El guard del router la espera para no redirigir a /login antes de tiempo
+// en una recarga (evita perder la sesión al refrescar).
+let markReady: () => void = () => {}
+const authReady = new Promise<void>((resolve) => {
+  markReady = resolve
+})
+export function whenAuthReady(): Promise<void> {
+  return authReady
+}
+
 export async function initAuth() {
   const { data } = await supabase.auth.getSession()
   authStore.session = data.session
@@ -35,6 +46,7 @@ export async function initAuth() {
   }
 
   authStore.loading = false
+  markReady()
 
   supabase.auth.onAuthStateChange(async (_event, session) => {
     authStore.session = session

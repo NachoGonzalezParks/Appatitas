@@ -13,6 +13,12 @@ const privateRoutes: RouteRecordRaw[] = [
     meta: { public: false },
   },
   {
+    path: '/perfil',
+    name: 'tutor-profile',
+    component: () => import('@/bc02-profiles/pages/TutorProfilePage.vue'),
+    meta: { public: false },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/bc01-identity/pages/LoginPage.vue'),

@@ -22,6 +22,7 @@ async function onLogout() {
     </p>
 
     <nav class="tiles">
+      <RouterLink class="tile" to="/perfil">👤 Mi perfil</RouterLink>
       <RouterLink class="tile" to="/mapa">🗺️ Mapa comunitario</RouterLink>
       <RouterLink class="tile" to="/encontrada">🐕 Reportar encontrada</RouterLink>
     </nav>

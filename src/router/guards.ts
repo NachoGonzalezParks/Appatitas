@@ -1,5 +1,5 @@
 import type { NavigationGuardWithThis } from 'vue-router'
-import { authStore, isAuthenticated } from '@/stores/auth.store'
+import { authStore, isAuthenticated, whenAuthReady } from '@/stores/auth.store'
 
 // Guard de autenticación (S0-06, Día 3).
 // - Rutas con meta.public → acceso libre (sin sesión).
@@ -7,8 +7,12 @@ import { authStore, isAuthenticated } from '@/stores/auth.store'
 //
 // La sesión ya está inicializada antes de montar la app (initAuth en main.ts),
 // por lo que aquí el estado de auth es confiable en la primera navegación.
-export const authGuard: NavigationGuardWithThis<undefined> = (to) => {
+export const authGuard: NavigationGuardWithThis<undefined> = async (to) => {
   if (to.meta.public) return true
+
+  // Espera a que la sesión inicial se restaure (evita el redirect prematuro a
+  // /login en una recarga con sesión válida en localStorage).
+  await whenAuthReady()
 
   if (!isAuthenticated()) {
     return { name: 'login', query: { redirect: to.fullPath } }

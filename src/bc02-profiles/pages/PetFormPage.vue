@@ -5,11 +5,13 @@ import {
   createPet,
   updatePet,
   getPet,
+  softDeletePet,
   PET_SPECIES,
   type PetInput,
   type PetSpecies,
 } from '../services/pet.service'
 import PhotoUploader from '../components/PhotoUploader.vue'
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
 
 // HU-003 (alta) / HU-004 (edición) — Formulario de mascota.
 const route = useRoute()
@@ -33,6 +35,8 @@ const photoFile = ref<File | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
+const showDelete = ref(false)
+const deleting = ref(false)
 
 const canSubmit = computed(
   () =>
@@ -89,6 +93,19 @@ async function onSubmit() {
   saving.value = false
   if (result.error) {
     error.value = 'No se pudo guardar la mascota. Intentá de nuevo.'
+    return
+  }
+  router.push({ name: 'pets' })
+}
+
+async function onConfirmDelete() {
+  deleting.value = true
+  error.value = null
+  const { error: err } = await softDeletePet(petId.value as string)
+  deleting.value = false
+  if (err) {
+    showDelete.value = false
+    error.value = 'No se pudo dar de baja la mascota. Intentá de nuevo.'
     return
   }
   router.push({ name: 'pets' })
@@ -163,6 +180,18 @@ async function onSubmit() {
         </button>
       </div>
     </form>
+
+    <button v-if="isEdit && !loading" type="button" class="delete-link" @click="showDelete = true">
+      Dar de baja
+    </button>
+
+    <ConfirmDeleteModal
+      v-if="showDelete"
+      :pet-name="form.name || 'esta mascota'"
+      :loading="deleting"
+      @confirm="onConfirmDelete"
+      @cancel="showDelete = false"
+    />
   </section>
 </template>
 
@@ -236,5 +265,14 @@ async function onSubmit() {
 }
 .save:disabled {
   opacity: 0.6;
+}
+.delete-link {
+  margin-top: 20px;
+  border: none;
+  background: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.95rem;
 }
 </style>

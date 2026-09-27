@@ -80,14 +80,16 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 
 ## Sprint 0 — Infraestructura base (1 semana)
 
+> **Responsable** = dev **líder** de la tarea. La carga se reparte por sprint respetando el rol de cada uno (Dev 1 datos · Dev 2 frontend · Dev 3 integraciones); si un sprint queda desbalanceado, se deslinda alguna tarea a otro dev. El detalle de quién hizo cada parte vive en **Estado por parte**.
+
 | Tarea | Descripción | Responsable |
 |---|---|---|
 | S0-01 | Inicializar proyecto Supabase, configurar `supabase/config.toml` | Dev 1 |
 | S0-02 | Crear las 14 tablas con columnas, tipos y constraints (incl. `push_subscriptions`, `user_roles`, `admin_audit_log` y perfil Tutor en `users` · RFC-001/002/003) | Dev 1 |
 | S0-03 | Extensión PostGIS + índice GIST sobre `locations.coordinates` | Dev 1 |
 | S0-04 | Configurar Supabase Auth (email/contraseña, Google OAuth, Facebook OAuth) | Dev 3 |
-| S0-05 | Inicializar PWA: manifest, service worker, instalación A2HS | Dev 3 |
-| S0-06 | Configurar buckets de Storage (avatars, pets, health-records, providers) | Dev 1 |
+| S0-05 | Inicializar PWA: manifest, service worker, instalación A2HS | Dev 2 |
+| S0-06 | Configurar buckets de Storage (avatars, pets, health-records, providers) | Dev 3 |
 | S0-07 | Integrar Resend: dominio verificado, función utilitaria `sendEmail` | Dev 3 |
 
 **Entregable de Sprint 0:** entorno de staging funcional, todas las tablas vacías creadas, buckets configurados, OAuth con al menos Google funcionando, email de prueba enviado con Resend.
@@ -113,11 +115,11 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 
 | Tarea | Descripción | Responsable |
 |---|---|---|
-| **S1-01** Auth Tutor | Trigger Auth→`users`/`user_roles` + RLS; RegisterPage, LoginPage, EmailVerifyPage, OAuthButtons; verificación por Resend + Google/Facebook OAuth | Dev 1, Dev 2, Dev 3 |
-| **S1-02** Perfil Tutor | Guards en router, `auth.store`, RLS users; TutorProfilePage, ProfileBanner, PhotoUploader | Dev 1, Dev 2 |
-| **S1-03** Registro Mascota | `pet.store`, filtro `deleted_at`, RLS pets; PetListPage, PetFormPage (alta), PetCard | Dev 1, Dev 2 |
-| **S1-04** Edición/baja Mascota | RPC baja lógica atómica (pets + cascada bookings); PetFormPage (edición), ConfirmDeleteModal | Dev 1, Dev 2 |
-| **Cierre** | RLS definitivas users/pets + migración; integración completa del flujo + pruebas en staging | Dev 1, Dev 2 |
+| **S1-01** Auth Tutor | Trigger Auth→`users`/`user_roles` + RLS; RegisterPage, LoginPage, EmailVerifyPage, OAuthButtons; verificación por Resend + Google/Facebook OAuth | Dev 3 |
+| **S1-02** Perfil Tutor | Guards en router, `auth.store`, RLS users; TutorProfilePage, ProfileBanner, PhotoUploader | Dev 2 |
+| **S1-03** Registro Mascota | `pet.store`, filtro `deleted_at`, RLS pets; PetListPage, PetFormPage (alta), PetCard | Dev 2 |
+| **S1-04** Edición/baja Mascota | RPC baja lógica atómica (pets + cascada bookings); PetFormPage (edición), ConfirmDeleteModal | Dev 1 |
+| **Cierre** | RLS definitivas users/pets + migración; integración completa del flujo + pruebas en staging | Dev 1 |
 
 **Dependencia crítica de Dev 2 sobre Dev 1:** Dev 2 no puede integrar login sin el trigger de Auth. Día 1: Dev 1 prioriza el trigger.
 
@@ -152,11 +154,11 @@ Detalle de los pendientes en `docs/handoff-dev2-sprint1.md`.
 
 | Tarea | Descripción | Responsable |
 |---|---|---|
-| **S2-01** Vacunas | RLS health_records + push_subscriptions; HealthDashboardPage, VaccinationFormPage, VaccineAlert | Dev 1, Dev 2 |
-| **S2-02** Desparasitaciones | Migración `alert_preferences` (JSONB); DewormingFormPage con cálculo automático de `next_due_date` | Dev 1, Dev 2 |
-| **S2-03** Historial clínico | RLS bucket health-records + query de timeline; ClinicalVisitFormPage, HealthTimeline, AttachmentUploader | Dev 1, Dev 2 |
-| **S2-04** Alertas de salud | RPC snooze (UPDATE atómico); AlertsSettingsPage + integración del snooze; Edge Function health-alerts-cron + Resend + permiso/registro de push en la PWA | Dev 1, Dev 2, Dev 3 |
-| **S2-05** Pasaporte | RLS passport_shares (anon con expiración) + hash pgcrypto; PassportPage + PassportShareCard + ruta pública /passport/:hash; pruebas Web Push A2HS | Dev 1, Dev 2, Dev 3 |
+| **S2-01** Vacunas | RLS health_records + push_subscriptions; HealthDashboardPage, VaccinationFormPage, VaccineAlert | Dev 2 |
+| **S2-02** Desparasitaciones | Migración `alert_preferences` (JSONB); DewormingFormPage con cálculo automático de `next_due_date` | Dev 2 |
+| **S2-03** Historial clínico | RLS bucket health-records + query de timeline; ClinicalVisitFormPage, HealthTimeline, AttachmentUploader | Dev 1 |
+| **S2-04** Alertas de salud | RPC snooze (UPDATE atómico); AlertsSettingsPage + integración del snooze; Edge Function health-alerts-cron + Resend + permiso/registro de push en la PWA | Dev 3 |
+| **S2-05** Pasaporte | RLS passport_shares (anon con expiración) + hash pgcrypto; PassportPage + PassportShareCard + ruta pública /passport/:hash; pruebas Web Push A2HS | Dev 1 |
 
 **Dependencia crítica de Dev 3 sobre Dev 1:**
 Dev 3 no puede probar el cron sin la tabla `push_subscriptions` (creada en Sprint 0 por RFC-001) y su RLS. Dev 1 prioriza la RLS de `push_subscriptions` en Día 1.
@@ -192,11 +194,11 @@ Nota: el registro de push (S2-04) ya está hecho por Dev 3; Dev 2 lo integra a l
 
 | Tarea | Descripción | Responsable |
 |---|---|---|
-| **S3-01** Reporte perdida | RLS lost_reports + migración feed_events; LostPetFormPage (mascota propia o anónima); Edge Function lost-pet-notify (ST_DWithin 5KM, batch 100, throttle 500) | Dev 1, Dev 2, Dev 3 |
-| **S3-02** Mapa comunitario | Verificar índice GIST para el mapa; CommunityMapPage, LostPetPin, LostPetCard, RadiusSelector, SpeciesFilter | Dev 1, Dev 2 |
-| **S3-03** Reporte encontrada | Verificar RLS con user_id nullable; FoundPetFormPage (sin auth) + integración del motor de coincidencias; Edge Function found-pet-match (species exacto + color ILIKE + ST_DWithin 3KM) | Dev 1, Dev 2, Dev 3 |
-| **S3-04** Cierre de reporte | RLS (solo propietario UPDATE status); ReportDetailPage con "¡La encontré!" + ReportStatusBadge; Edge Function report-closed → INSERT feed_events | Dev 1, Dev 2, Dev 3 |
-| **Cierre** | Prueba de autorización (anónimo no cierra reporte ajeno); flujo lost→found integrado; simular push masivo + verificar matching | Dev 1, Dev 2, Dev 3 |
+| **S3-01** Reporte perdida | RLS lost_reports + migración feed_events; LostPetFormPage (mascota propia o anónima); Edge Function lost-pet-notify (ST_DWithin 5KM, batch 100, throttle 500) | Dev 3 |
+| **S3-02** Mapa comunitario | Verificar índice GIST para el mapa; CommunityMapPage, LostPetPin, LostPetCard, RadiusSelector, SpeciesFilter | Dev 2 |
+| **S3-03** Reporte encontrada | Verificar RLS con user_id nullable; FoundPetFormPage (sin auth) + integración del motor de coincidencias; Edge Function found-pet-match (species exacto + color ILIKE + ST_DWithin 3KM) | Dev 3 |
+| **S3-04** Cierre de reporte | RLS (solo propietario UPDATE status); ReportDetailPage con "¡La encontré!" + ReportStatusBadge; Edge Function report-closed → INSERT feed_events | Dev 2 |
+| **Cierre** | Prueba de autorización (anónimo no cierra reporte ajeno); flujo lost→found integrado; simular push masivo + verificar matching | Dev 1 |
 
 **Dependencia crítica de Dev 2 sobre Dev 3:**
 El botón "Tengo información" en LostPetCard (Dev 2) puede usarse antes de que el motor de matching (Dev 3) esté listo. Desacoplar: el botón abre WhatsApp/teléfono de contacto independientemente del motor.
@@ -224,10 +226,10 @@ El botón "Tengo información" en LostPetCard (Dev 2) puede usarse antes de que 
 
 | Tarea | Descripción | Responsable |
 |---|---|---|
-| **S4-01** Registro Proveedor | RLS providers/service_areas + ST_Buffer + migración gallery_urls; ProviderRegisterPage (formulario + zona), ServiceAreaMap, ProviderStatusBadge; Edge Function mp-provider-onboarding (OAuth MP + mp_user_id) | Dev 1, Dev 2, Dev 3 |
-| **S4-02** Galería | RLS bucket providers + COUNT < 10 en backend; GalleryManagerPage, GalleryGrid (reordenable), GalleryUploader; probar onboarding MP sandbox | Dev 1, Dev 2, Dev 3 |
-| **S4-03** Horarios | RLS schedules + integridad de slots; ScheduleManagerPage, WeeklyScheduleEditor | Dev 1, Dev 2 |
-| **Cierre** | Proveedor de prueba aprobado en staging; ProviderProfilePage + integración completa; verificar mp_user_id tras callback OAuth | Dev 1, Dev 2, Dev 3 |
+| **S4-01** Registro Proveedor | RLS providers/service_areas + ST_Buffer + migración gallery_urls; ProviderRegisterPage (formulario + zona), ServiceAreaMap, ProviderStatusBadge; Edge Function mp-provider-onboarding (OAuth MP + mp_user_id) | Dev 3 |
+| **S4-02** Galería | RLS bucket providers + COUNT < 10 en backend; GalleryManagerPage, GalleryGrid (reordenable), GalleryUploader; probar onboarding MP sandbox | Dev 2 |
+| **S4-03** Horarios | RLS schedules + integridad de slots; ScheduleManagerPage, WeeklyScheduleEditor | Dev 2 |
+| **Cierre** | Proveedor de prueba aprobado en staging; ProviderProfilePage + integración completa; verificar mp_user_id tras callback OAuth | Dev 1 |
 
 **Dependencia crítica para Sprint 5:**
 Al cierre de Sprint 4 debe existir al menos 1 Proveedor activo con schedules cargados. Dev 1 ejecuta el UPDATE manual de staging.
@@ -257,10 +259,10 @@ GAP-001 (criterios de HU-017) · GAP-002 (comisión) · GAP-003 (liberación de 
 
 | Tarea | Descripción | Responsable |
 |---|---|---|
-| **S5-01** Búsqueda | RLS bookings/booking_status_events + UNIQUE(provider_id, scheduled_at); SearchPage con filtros, ProviderCard, ProviderDetailPage | Dev 1, Dev 2 |
-| **S5-02** Disponibilidad | Verificar UNIQUE vs slots cancelados + query de slots; AvailabilityPage, SlotPicker | Dev 1, Dev 2 |
-| **S5-03** Reserva y pago | Anti-concurrencia + INSERT booking/booking_status_events; BookingCheckoutPage, PaymentRedirectButton, BookingSuccessPage, BookingListPage, BookingStatusTimeline; Edge Functions mp-create-payment / mp-payment-webhook / booking-expiry-cron | Dev 1, Dev 2, Dev 3 |
-| **Cierre** | Prueba de concurrencia (2 requests al mismo slot); flujo completo de cancelación y estados; e2e de pago aprobado/rechazado/expirado | Dev 1, Dev 2, Dev 3 |
+| **S5-01** Búsqueda | RLS bookings/booking_status_events + UNIQUE(provider_id, scheduled_at); SearchPage con filtros, ProviderCard, ProviderDetailPage | Dev 2 |
+| **S5-02** Disponibilidad | Verificar UNIQUE vs slots cancelados + query de slots; AvailabilityPage, SlotPicker | Dev 2 |
+| **S5-03** Reserva y pago | Anti-concurrencia + INSERT booking/booking_status_events; BookingCheckoutPage, PaymentRedirectButton, BookingSuccessPage, BookingListPage, BookingStatusTimeline; Edge Functions mp-create-payment / mp-payment-webhook / booking-expiry-cron | Dev 3 |
+| **Cierre** | Prueba de concurrencia (2 requests al mismo slot); flujo completo de cancelación y estados; e2e de pago aprobado/rechazado/expirado | Dev 1 |
 
 ### Estado por parte (al 2026-09-27) — no iniciado y bloqueado
 
@@ -282,10 +284,10 @@ El Admin es transversal. Reparto sugerido (detalle en `docs/technical-backlog.md
 
 | Tarea | HU | Sprint | Descripción | Responsable |
 |---|---|---|---|---|
-| Acceso y permisos de Admin | HU-018 | 1 | `has_role()`, RLS de `user_roles`/`admin_audit_log`, asignación manual del primer admin; guard de `/admin` + pantalla de acceso denegado | Dev 1, Dev 2 |
-| Aprobación de Proveedores | HU-020 | 4 | UPDATE seguro de `providers` + INSERT `admin_audit_log` (RPC); pantalla `/admin/proveedores` (aprobar/rechazar, sello Verificado) | Dev 1, Dev 2 |
-| Moderación de la comunidad | HU-021 | 3 | UPDATE de `lost_reports` por moderación + audit; cola de moderación `/admin/moderacion` | Dev 1, Dev 2 |
-| Panel y monitoreo | HU-019 | 1 (base) / 5 (transacciones) | Vistas/consultas agregadas; dashboard de métricas y reservas | Dev 1, Dev 2 |
+| Acceso y permisos de Admin | HU-018 | 1 | `has_role()`, RLS de `user_roles`/`admin_audit_log`, asignación manual del primer admin; guard de `/admin` + pantalla de acceso denegado | Dev 1 |
+| Aprobación de Proveedores | HU-020 | 4 | UPDATE seguro de `providers` + INSERT `admin_audit_log` (RPC); pantalla `/admin/proveedores` (aprobar/rechazar, sello Verificado) | Dev 1 |
+| Moderación de la comunidad | HU-021 | 3 | UPDATE de `lost_reports` por moderación + audit; cola de moderación `/admin/moderacion` | Dev 2 |
+| Panel y monitoreo | HU-019 | 1 (base) / 5 (transacciones) | Vistas/consultas agregadas; dashboard de métricas y reservas | Dev 2 |
 
 > **Primer admin:** Dev 1 inserta manualmente `('<uuid>', 'admin')` en `user_roles` (vía SQL/Studio) para la cuenta del equipo. El rol admin nunca es autoservicio.
 

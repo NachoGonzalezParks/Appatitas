@@ -134,6 +134,7 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 | RPC `soft_delete_pet` (mig. 021) | Hecho | Dev 1 |
 | Tipos generados conformes + `config.toml` | Hecho | Dev 1 |
 | RLS `users` / `user_roles` / `pets` | Hecho | Dev 1 |
+| Config de Auth en staging: Site URL + Redirect URLs → `http://localhost:5173` (H4) | Hecho | Dev 3 |
 | `auth.store` / `pet.store` (base) | Hecho | Dev 1 (base) + Dev 2 (extensión) |
 | Router + guards (sesión + email verificado, RN-004) | Hecho | Dev 2 |
 | HU-001 registro/login/verificación (pages + `auth.service`) | Hecho | Dev 2 |

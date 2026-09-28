@@ -44,12 +44,12 @@ Igual que los handoffs anteriores: los ítems **no se borran**, se marcan resuel
 - **Acción Dev 1:** regenerar con `supabase gen types typescript` (con las funciones). Luego Dev 2 quita el cast y usa `.rpc` tipado.
 - **Resuelto:** _(fecha — quién)_
 
-## 🟡 H4 — Redirect URLs de Auth en staging (verificar)
-- [ ] Hecho
+## ✅ H4 — Redirect URLs de Auth en staging (verificar)
+- [x] Hecho
 - **Qué:** el login con Google (OAuth) y la confirmación de email redirigen a `http://localhost:5173/` (`redirectTo` / `emailRedirectTo`). Esa URL debe estar en la allowlist de **Redirect URLs** del proyecto Supabase, o el flujo falla al volver.
 - **Estado:** no se pudo verificar E2E de forma autónoma (OAuth de Google y el clic en el email de confirmación requieren interacción real). El registro por email + el login por contraseña sí se verificaron (con el usuario de prueba confirmado por Admin API).
 - **Acción Dev 3/Dev 1:** confirmar que `http://localhost:5173` (y la URL de staging del front) están en Redirect URLs.
-- **Resuelto:** _(fecha — quién)_
+- **Resuelto:** 2026-09-28 — Ale (dev3). En el panel de staging (Authentication → URL Configuration): **Site URL** estaba en `http://localhost:3000` (default de Supabase, incorrecto) → corregido a `http://localhost:5173`; **Redirect URLs** estaba **vacío** → agregado `http://localhost:5173/**`. Pendiente: sumar la URL del front en staging cuando haya deploy (hoy no existe).
 
 ## 🟡 H5 — Subida a Storage (avatars / pets) (verificar)
 - [ ] Hecho
@@ -76,7 +76,7 @@ Dev 2 los elimina al cerrar el sprint. Si aparece algún remanente (`neighborhoo
 | H1 trigger no aplicado | 🔴 Crítica | Registro real de Tutor (HU-001) |
 | H2 RPC soft_delete_pet | 🔴 Alta | Baja de mascota (HU-004) |
 | H3 tipos sin Functions | 🟠 Media | Tipado de `.rpc` (calidad) |
-| H4 redirect URLs | 🟡 Verificar | OAuth Google / confirmación email |
+| H4 redirect URLs | ✅ Resuelto | OAuth Google / confirmación email |
 | H5 uploads Storage | 🟡 Verificar | Fotos de perfil/mascota |
 
 **El frontend de Sprint 1 (HU-001..004) está completo y verificado en lo que no depende de estos ítems.**

@@ -140,12 +140,14 @@ Flujo: `feature/S1-01` → PR → `sprint/1` → revisión → `staging` → `ma
 | HU-001 registro/login/verificación (pages + `auth.service`) | Hecho | Dev 2 |
 | HU-002 perfil de Tutor | Hecho | Dev 2 |
 | HU-003 / HU-004 alta, edición y baja de mascota (UI) | Hecho | Dev 2 |
-| Aplicar migraciones a staging (dejar el trigger 020 activo) | Pendiente | Dev 1 |
-| Corregir bug en `soft_delete_pet` (`pet_id` ambiguo) | Pendiente | Dev 1 |
+| Aplicar migraciones a staging + trigger 020 activo (ver **H1**) | Pendiente | Dev 1 |
+| Corregir RPC `soft_delete_pet` (ver **H2**) | Pendiente | Dev 1 |
+| Regenerar `supabase.types.ts` con `Functions` (ver **H3**) | Pendiente | Dev 1 |
+| Verificar subida a Storage avatars/pets (ver **H5**) | Pendiente | Dev 1 (RLS) + Dev 2 (prueba) |
 | Verificar entrega del email de verificación (Resend) | Pendiente | Dev 3 |
 | Activar Facebook OAuth | Diferido (feature flag) | Dev 3 |
 
-Detalle de los pendientes en `docs/handoff-dev2-sprint1.md`.
+> Descripción, causa y fix de cada pendiente (H1–H5) en **`docs/handoff-dev2-sprint1.md`** (fuente única; acá solo el estado y el responsable).
 
 ---
 

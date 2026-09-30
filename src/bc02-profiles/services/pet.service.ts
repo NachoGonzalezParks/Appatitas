@@ -101,7 +101,7 @@ export async function softDeletePet(id: string): Promise<{ error: Error | null }
     fn: string,
     args: Record<string, unknown>,
   ) => PromiseLike<{ error: Error | null }>
-  const { error } = await rpc('soft_delete_pet', { pet_id: id })
+  const { error } = await rpc('soft_delete_pet', { p_pet_id: id })
   return { error }
 }
 

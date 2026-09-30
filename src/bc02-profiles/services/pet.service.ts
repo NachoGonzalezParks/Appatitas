@@ -90,18 +90,8 @@ export async function createPet(
   return { data, error: null }
 }
 
-// Baja lógica (HU-004, RN-003). Usa la RPC transaccional de Dev1
-// (migración 021_soft_delete_pet): marca deleted_at y cancela los turnos
-// futuros (bookings → cancelled_by_tutor). La RPC valida la propiedad por RLS.
-//
-// La RPC aún no figura en los tipos generados (Database.Functions vacío), por eso
-// el cast acotado. Handoff a Dev1: regenerar tipos incluyendo Functions.
 export async function softDeletePet(id: string): Promise<{ error: Error | null }> {
-  const rpc = supabase.rpc.bind(supabase) as (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => PromiseLike<{ error: Error | null }>
-  const { error } = await rpc('soft_delete_pet', { p_pet_id: id })
+  const { error } = await supabase.rpc('soft_delete_pet', { p_pet_id: id })
   return { error }
 }
 

@@ -666,6 +666,10 @@ export type Database = {
         Args: { uid: string; r: string }
         Returns: boolean
       }
+      soft_delete_pet: {
+        Args: { p_pet_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

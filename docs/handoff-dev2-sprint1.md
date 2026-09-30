@@ -38,11 +38,11 @@ Igual que los handoffs anteriores: los ítems **no se borran**, se marcan resuel
 - **Verificación de Dev 2:** simulando la baja (set `deleted_at` a mano) la mascota desaparece del listado correctamente → el resto del flujo es correcto.
 - **Resuelto:** _(fecha — quién)_
 
-## 🟠 H3 — Regenerar `supabase.types.ts` incluyendo `Functions`
-- [ ] Hecho
+## ✅ H3 — Regenerar `supabase.types.ts` incluyendo `Functions`
+- [x] Hecho
 - **Qué:** los tipos generados no incluyen las funciones RPC (`Database.Functions` vacío), por eso `supabase.rpc('soft_delete_pet', …)` no tipa y en `pet.service.ts` quedó un **cast acotado y documentado**.
 - **Acción Dev 1:** regenerar con `supabase gen types typescript` (con las funciones). Luego Dev 2 quita el cast y usa `.rpc` tipado.
-- **Resuelto:** _(fecha — quién)_
+- **Resuelto:** 2026-09-30 — Dev 1 (Trini). Agregado `soft_delete_pet` a `Database.Functions` en `supabase.types.ts`. Eliminado cast acotado en `pet.service.ts`; ahora usa `.rpc` tipado directamente.
 
 ## ✅ H4 — Redirect URLs de Auth en staging (verificar)
 - [x] Hecho

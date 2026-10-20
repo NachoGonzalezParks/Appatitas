@@ -120,6 +120,7 @@ export type Database = {
           payout_method: string | null
           rating_avg: number | null
           verified: boolean
+          gallery_urls: string[]
           created_at: string
           updated_at: string
         }
@@ -138,6 +139,7 @@ export type Database = {
           payout_method?: string | null
           rating_avg?: number | null
           verified?: boolean
+          gallery_urls?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -156,6 +158,7 @@ export type Database = {
           payout_method?: string | null
           rating_avg?: number | null
           verified?: boolean
+          gallery_urls?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -619,6 +622,38 @@ export type Database = {
           }
         ]
       }
+      feed_events: {
+        Row: {
+          id: string
+          type: string
+          location_id: string | null
+          payload: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          type: string
+          location_id?: string | null
+          payload?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          type?: string
+          location_id?: string | null
+          payload?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_events_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       admin_audit_log: {
         Row: {
           id: string
@@ -666,6 +701,18 @@ export type Database = {
         Args: { uid: string; r: string }
         Returns: boolean
       }
+      soft_delete_pet: {
+        Args: { p_pet_id: string }
+        Returns: undefined
+      }
+      snooze_health_record: {
+        Args: { p_record_id: string }
+        Returns: undefined
+      }
+      create_passport_share: {
+        Args: { p_pet_id: string; p_duration_days?: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -696,3 +743,4 @@ export type Booking = Tables<'bookings'>
 export type BookingStatusEvent = Tables<'booking_status_events'>
 export type PushSubscription = Tables<'push_subscriptions'>
 export type AdminAuditLog = Tables<'admin_audit_log'>
+export type FeedEvent = Tables<'feed_events'>

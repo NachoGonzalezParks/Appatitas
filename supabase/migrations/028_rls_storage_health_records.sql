@@ -1,0 +1,16 @@
+-- 028_rls_storage_health_records.sql
+-- Política RLS del bucket health-records (adjuntos clínicos, RN-023).
+-- Ya aplicada en staging. Se documenta aquí para mantener el historial del repo.
+--
+-- Ruta esperada: health-records/{pet_id}/{record_id}/{filename}
+-- Solo el tutor dueño de la mascota puede leer y escribir sus adjuntos.
+--
+-- La política se aplica via panel de Supabase Storage (no via SQL directo).
+-- Expresión equivalente:
+--
+-- (bucket_id = 'health-records')
+-- AND EXISTS (
+--   SELECT 1 FROM pets pe
+--   WHERE (pe.id)::text = (storage.foldername(name))[1]
+--     AND pe.user_id = auth.uid()
+-- )

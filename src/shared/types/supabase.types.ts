@@ -619,6 +619,38 @@ export type Database = {
           }
         ]
       }
+      feed_events: {
+        Row: {
+          id: string
+          type: string
+          location_id: string | null
+          payload: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          type: string
+          location_id?: string | null
+          payload?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          type?: string
+          location_id?: string | null
+          payload?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_events_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       admin_audit_log: {
         Row: {
           id: string
@@ -708,3 +740,4 @@ export type Booking = Tables<'bookings'>
 export type BookingStatusEvent = Tables<'booking_status_events'>
 export type PushSubscription = Tables<'push_subscriptions'>
 export type AdminAuditLog = Tables<'admin_audit_log'>
+export type FeedEvent = Tables<'feed_events'>

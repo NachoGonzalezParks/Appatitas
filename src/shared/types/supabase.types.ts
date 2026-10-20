@@ -670,6 +670,14 @@ export type Database = {
         Args: { p_pet_id: string }
         Returns: undefined
       }
+      snooze_health_record: {
+        Args: { p_record_id: string }
+        Returns: undefined
+      }
+      create_passport_share: {
+        Args: { p_pet_id: string; p_duration_days?: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

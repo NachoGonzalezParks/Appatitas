@@ -120,6 +120,7 @@ export type Database = {
           payout_method: string | null
           rating_avg: number | null
           verified: boolean
+          gallery_urls: string[]
           created_at: string
           updated_at: string
         }
@@ -138,6 +139,7 @@ export type Database = {
           payout_method?: string | null
           rating_avg?: number | null
           verified?: boolean
+          gallery_urls?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -156,6 +158,7 @@ export type Database = {
           payout_method?: string | null
           rating_avg?: number | null
           verified?: boolean
+          gallery_urls?: string[]
           created_at?: string
           updated_at?: string
         }

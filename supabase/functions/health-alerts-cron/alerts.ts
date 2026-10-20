@@ -6,6 +6,10 @@
 
 export type HealthRecordType = 'vaccination' | 'deworming' | 'clinical_visit'
 
+// Preferencias de alertas del Tutor (users.alert_preferences, JSONB · GAP-010).
+// Ej.: { vaccination: true, deworming: false }. clinical_visit no está en el panel.
+export type AlertPreferences = Partial<Record<HealthRecordType, boolean>>
+
 // Fila del JOIN health_records + pets + users que consume el cron.
 export interface AlertRow {
   record_id: string
@@ -15,6 +19,7 @@ export interface AlertRow {
   next_due_date: string // 'YYYY-MM-DD'
   user_id: string
   email: string
+  alert_preferences: AlertPreferences | null
 }
 
 export interface Notification {
@@ -89,5 +94,33 @@ export function buildNotification(row: AlertRow, today: Date): Notification {
       `<p>Ingresá a APPATITAS para ver el detalle.</p>`,
     pushTitle: `Recordatorio de salud — ${row.pet_name}`,
     pushBody: `${label} ${phrase}`,
+  }
+}
+
+// ¿El Tutor quiere alertas de este tipo? (users.alert_preferences · GAP-010).
+// Por defecto se envía; solo se omite si la preferencia está explícitamente en false.
+// Los tipos que no están en el panel (clinical_visit) siempre se notifican.
+export function shouldNotify(
+  type: HealthRecordType,
+  prefs: AlertPreferences | null | undefined,
+): boolean {
+  return prefs?.[type] !== false
+}
+
+// Payload de la push, en el formato que espera el Service Worker (src/sw.ts):
+// type 'health' + data.record_id habilitan la acción "Posponer 7 días" (RN-007).
+export interface PushPayload {
+  title: string
+  body: string
+  type: 'health'
+  data: { pet_id: string; record_id: string }
+}
+
+export function buildPushPayload(row: AlertRow, note: Notification): PushPayload {
+  return {
+    title: note.pushTitle,
+    body: note.pushBody,
+    type: 'health',
+    data: { pet_id: row.pet_id, record_id: row.record_id },
   }
 }

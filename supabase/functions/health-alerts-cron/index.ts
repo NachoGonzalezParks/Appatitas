@@ -1,15 +1,22 @@
 // Edge Function: health-alerts-cron (Sprint 2 · HU-009 · RN-006).
 //
 // Cron diario (0 9 * * *): busca los health_records que vencen hoy / +7 / +30 días
-// y notifica al Tutor por email (Resend) y —Incremento 2— por Web Push.
+// y notifica al Tutor por email (Resend) y por Web Push.
 //
-// Incremento 1 (este archivo): consulta + email + búsqueda de suscripciones push.
-// El envío cifrado de Web Push (VAPID + @negrel/webpush) llega en el Incremento 2
-// (ver TODO más abajo). El email nunca falla el cron: es el canal de respaldo.
+// Incremento 1: consulta + email. Incremento 2 (este archivo): filtro por
+// alert_preferences + envío real de Web Push (web-push-sender.ts) + pruning de
+// suscripciones muertas. El email nunca falla el cron: es el canal de respaldo.
 
 import { createAdminClient } from '../_shared/supabase-client.ts'
 import { sendEmail } from '../_shared/resend-client.ts'
-import { type AlertRow, buildNotification, targetDueDates } from './alerts.ts'
+import {
+  type AlertRow,
+  buildNotification,
+  buildPushPayload,
+  shouldNotify,
+  targetDueDates,
+} from './alerts.ts'
+import { isPushConfigured, sendPush } from './web-push-sender.ts'
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -31,12 +38,10 @@ Deno.serve(async (req: Request) => {
 
   // JOIN health_records -> pets -> users vía embedding de PostgREST.
   // pets!inner + filtro deleted_at IS NULL excluye mascotas dadas de baja.
-  // TODO(HU-009): cuando Dev1 agregue users.alert_preferences (JSONB), filtrar
-  // por tipo (vaccination/deworming) según las preferencias del Tutor.
   const { data, error } = await supabase
     .from('health_records')
     .select(
-      'id, pet_id, type, next_due_date, pets!inner(name, user_id, deleted_at, users!inner(email))',
+      'id, pet_id, type, next_due_date, pets!inner(name, user_id, deleted_at, users!inner(email, alert_preferences))',
     )
     .in('next_due_date', targets)
     .is('pets.deleted_at', null)
@@ -55,14 +60,26 @@ Deno.serve(async (req: Request) => {
       pet_name: rec.pets.name,
       user_id: rec.pets.user_id,
       email: rec.pets.users.email,
+      alert_preferences: rec.pets.users.alert_preferences ?? null,
     }
   })
 
   let emailsSent = 0
   let emailsFailed = 0
-  let pushSubscriptions = 0
+  let pushSent = 0
+  let pushFailed = 0
+  let pruned = 0
+  let skippedByPrefs = 0
+
+  const pushOn = isPushConfigured()
 
   for (const row of rows) {
+    // Preferencias del Tutor (GAP-010): si apagó este tipo, no se notifica por ningún canal.
+    if (!shouldNotify(row.type, row.alert_preferences)) {
+      skippedByPrefs++
+      continue
+    }
+
     const note = buildNotification(row, today)
 
     // Canal email (siempre; RN-006 lo exige como respaldo obligatorio).
@@ -70,16 +87,35 @@ Deno.serve(async (req: Request) => {
     if (res.success) emailsSent++
     else emailsFailed++
 
-    // Canal push: buscamos las suscripciones del Tutor (RFC-001). El envío
-    // cifrado real llega en el Incremento 2.
+    // Canal push: a cada suscripción del Tutor (RFC-001).
+    if (!pushOn) continue
     const { data: subs } = await supabase
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
       .eq('user_id', row.user_id)
-    pushSubscriptions += subs?.length ?? 0
-    // TODO(Incremento 2 · HU-009): por cada sub, enviar Web Push con
-    // note.pushTitle / note.pushBody y data { pet_id, record_id, action: 'snooze' }.
+
+    const payload = buildPushPayload(row, note)
+    for (const sub of subs ?? []) {
+      const s = sub as { endpoint: string; p256dh: string; auth: string }
+      const r = await sendPush(s, payload)
+      if (r.ok) pushSent++
+      else pushFailed++
+      // Suscripción muerta (404/410): se borra para no reintentar siempre.
+      if (r.gone) {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', s.endpoint)
+        pruned++
+      }
+    }
   }
 
-  return json({ ok: true, evaluated: rows.length, emailsSent, emailsFailed, pushSubscriptions })
+  return json({
+    ok: true,
+    evaluated: rows.length,
+    skippedByPrefs,
+    emailsSent,
+    emailsFailed,
+    pushSent,
+    pushFailed,
+    pruned,
+  })
 })

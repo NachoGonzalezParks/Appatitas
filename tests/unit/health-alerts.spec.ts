@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   type AlertRow,
   buildNotification,
+  buildPushPayload,
   daysUntil,
   duePhrase,
   escapeHtml,
+  shouldNotify,
   targetDueDates,
 } from '../../supabase/functions/health-alerts-cron/alerts'
 
@@ -51,6 +53,7 @@ describe('buildNotification', () => {
     next_due_date: '2026-01-22',
     user_id: 'u1',
     email: 'tutor@example.com',
+    alert_preferences: null,
   }
 
   it('arma título y cuerpo de la push', () => {
@@ -64,5 +67,42 @@ describe('buildNotification', () => {
     const n = buildNotification({ ...row, pet_name: '<script>x' }, TODAY)
     expect(n.html).toContain('&lt;script&gt;x')
     expect(n.html).not.toContain('<script>x')
+  })
+})
+
+describe('shouldNotify (alert_preferences)', () => {
+  it('notifica por defecto cuando no hay preferencias', () => {
+    expect(shouldNotify('vaccination', null)).toBe(true)
+    expect(shouldNotify('deworming', undefined)).toBe(true)
+  })
+
+  it('respeta la preferencia en false', () => {
+    expect(shouldNotify('vaccination', { vaccination: false })).toBe(false)
+    expect(shouldNotify('deworming', { vaccination: false })).toBe(true)
+  })
+
+  it('un tipo fuera del panel (clinical_visit) siempre se notifica', () => {
+    expect(shouldNotify('clinical_visit', { vaccination: false })).toBe(true)
+  })
+})
+
+describe('buildPushPayload', () => {
+  const row: AlertRow = {
+    record_id: 'r9',
+    pet_id: 'p9',
+    pet_name: 'Luna',
+    type: 'deworming',
+    next_due_date: '2026-01-15',
+    user_id: 'u9',
+    email: 't@x.com',
+    alert_preferences: null,
+  }
+
+  it('arma el payload en el formato del Service Worker (type health + data.record_id)', () => {
+    const note = buildNotification(row, TODAY)
+    const p = buildPushPayload(row, note)
+    expect(p.type).toBe('health')
+    expect(p.title).toBe('Recordatorio de salud — Luna')
+    expect(p.data).toEqual({ pet_id: 'p9', record_id: 'r9' })
   })
 })

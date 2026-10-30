@@ -9,8 +9,8 @@
 // está en versión temprana (0.1.x); si diera problemas, evaluar `@negrel/webpush`.
 // Si algo falla, degrada sin romper al llamador.
 //
-// Nota: el cron health-alerts-cron tiene una copia propia de esto (PR del Sprint 2);
-// cuando ambos mergeen, conviene que use este módulo compartido.
+// Lo usan: health-alerts-cron (Sprint 2) y las funciones de comunidad de Sprint 3
+// (lost-pet-notify, found-pet-match).
 
 import { sendNotification } from 'npm:web-push-neo@0.1.2'
 

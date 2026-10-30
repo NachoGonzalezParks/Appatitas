@@ -7,10 +7,12 @@
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 -- Cada usuario ve el suyo; admin ve todos.
+DROP POLICY IF EXISTS "users_select" ON public.users;
 CREATE POLICY "users_select" ON public.users
   FOR SELECT USING (id = auth.uid() OR has_role(auth.uid(), 'admin'));
 
 -- Cada usuario edita solo el suyo.
+DROP POLICY IF EXISTS "users_update" ON public.users;
 CREATE POLICY "users_update" ON public.users
   FOR UPDATE USING (id = auth.uid());
 
@@ -21,10 +23,12 @@ CREATE POLICY "users_update" ON public.users
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
 -- Cada usuario ve los suyos; admin ve todos.
+DROP POLICY IF EXISTS "user_roles_select" ON public.user_roles;
 CREATE POLICY "user_roles_select" ON public.user_roles
   FOR SELECT USING (user_id = auth.uid() OR has_role(auth.uid(), 'admin'));
 
 -- El propio usuario puede agregar rol tutor o provider.
+DROP POLICY IF EXISTS "user_roles_insert_self" ON public.user_roles;
 CREATE POLICY "user_roles_insert_self" ON public.user_roles
   FOR INSERT WITH CHECK (
     user_id = auth.uid()
@@ -32,12 +36,14 @@ CREATE POLICY "user_roles_insert_self" ON public.user_roles
   );
 
 -- Admin puede insertar el rol admin.
+DROP POLICY IF EXISTS "user_roles_insert_admin" ON public.user_roles;
 CREATE POLICY "user_roles_insert_admin" ON public.user_roles
   FOR INSERT WITH CHECK (
     has_role(auth.uid(), 'admin') AND role = 'admin'
   );
 
 -- Solo admin puede borrar roles.
+DROP POLICY IF EXISTS "user_roles_delete_admin" ON public.user_roles;
 CREATE POLICY "user_roles_delete_admin" ON public.user_roles
   FOR DELETE USING (has_role(auth.uid(), 'admin'));
 
@@ -46,12 +52,15 @@ ALTER TABLE public.pets ENABLE ROW LEVEL SECURITY;
 
 -- Cada tutor ve, crea y edita solo sus propias mascotas.
 -- El filtro deleted_at IS NULL se aplica en el código (no a nivel RLS).
+DROP POLICY IF EXISTS "pets_select" ON public.pets;
 CREATE POLICY "pets_select" ON public.pets
   FOR SELECT USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "pets_insert" ON public.pets;
 CREATE POLICY "pets_insert" ON public.pets
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "pets_update" ON public.pets;
 CREATE POLICY "pets_update" ON public.pets
   FOR UPDATE USING (user_id = auth.uid());
 

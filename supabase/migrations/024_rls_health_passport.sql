@@ -5,6 +5,7 @@
 ALTER TABLE public.health_records ENABLE ROW LEVEL SECURITY;
 
 -- El tutor solo ve registros de sus propias mascotas (no eliminadas).
+DROP POLICY IF EXISTS "health_records_select_own" ON public.health_records;
 CREATE POLICY "health_records_select_own" ON public.health_records
   FOR SELECT USING (
     EXISTS (
@@ -15,6 +16,7 @@ CREATE POLICY "health_records_select_own" ON public.health_records
     )
   );
 
+DROP POLICY IF EXISTS "health_records_insert_own" ON public.health_records;
 CREATE POLICY "health_records_insert_own" ON public.health_records
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -25,6 +27,7 @@ CREATE POLICY "health_records_insert_own" ON public.health_records
     )
   );
 
+DROP POLICY IF EXISTS "health_records_update_own" ON public.health_records;
 CREATE POLICY "health_records_update_own" ON public.health_records
   FOR UPDATE USING (
     EXISTS (
@@ -35,6 +38,7 @@ CREATE POLICY "health_records_update_own" ON public.health_records
     )
   );
 
+DROP POLICY IF EXISTS "health_records_delete_own" ON public.health_records;
 CREATE POLICY "health_records_delete_own" ON public.health_records
   FOR DELETE USING (
     EXISTS (
@@ -49,6 +53,7 @@ CREATE POLICY "health_records_delete_own" ON public.health_records
 ALTER TABLE public.passport_shares ENABLE ROW LEVEL SECURITY;
 
 -- El tutor gestiona sus propios shares.
+DROP POLICY IF EXISTS "passport_shares_select_own" ON public.passport_shares;
 CREATE POLICY "passport_shares_select_own" ON public.passport_shares
   FOR SELECT USING (
     EXISTS (
@@ -58,6 +63,7 @@ CREATE POLICY "passport_shares_select_own" ON public.passport_shares
     )
   );
 
+DROP POLICY IF EXISTS "passport_shares_insert_own" ON public.passport_shares;
 CREATE POLICY "passport_shares_insert_own" ON public.passport_shares
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -67,6 +73,7 @@ CREATE POLICY "passport_shares_insert_own" ON public.passport_shares
     )
   );
 
+DROP POLICY IF EXISTS "passport_shares_delete_own" ON public.passport_shares;
 CREATE POLICY "passport_shares_delete_own" ON public.passport_shares
   FOR DELETE USING (
     EXISTS (
@@ -77,5 +84,6 @@ CREATE POLICY "passport_shares_delete_own" ON public.passport_shares
   );
 
 -- Acceso público (anon) al pasaporte compartido: solo si no expiró (RN-009).
+DROP POLICY IF EXISTS "passport_shares_read_public" ON public.passport_shares;
 CREATE POLICY "passport_shares_read_public" ON public.passport_shares
   FOR SELECT USING (expires_at > now());

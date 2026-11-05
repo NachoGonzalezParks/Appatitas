@@ -4,11 +4,14 @@
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Cada usuario gestiona solo sus propias suscripciones push.
+DROP POLICY IF EXISTS "push_subscriptions_select_own" ON public.push_subscriptions;
 CREATE POLICY "push_subscriptions_select_own" ON public.push_subscriptions
   FOR SELECT USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "push_subscriptions_insert_own" ON public.push_subscriptions;
 CREATE POLICY "push_subscriptions_insert_own" ON public.push_subscriptions
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "push_subscriptions_delete_own" ON public.push_subscriptions;
 CREATE POLICY "push_subscriptions_delete_own" ON public.push_subscriptions
   FOR DELETE USING (user_id = auth.uid());

@@ -10,6 +10,7 @@
 ALTER TABLE public.lost_reports ENABLE ROW LEVEL SECURITY;
 
 -- Lectura pública de reportes activos (mapa comunitario, RN-015).
+DROP POLICY IF EXISTS "lost_reports_select_public" ON public.lost_reports;
 CREATE POLICY "lost_reports_select_public" ON public.lost_reports
   FOR SELECT USING (
     status = 'lost'
@@ -18,10 +19,12 @@ CREATE POLICY "lost_reports_select_public" ON public.lost_reports
   );
 
 -- INSERT: autenticado o anónimo (user_id nullable).
+DROP POLICY IF EXISTS "lost_reports_insert_any" ON public.lost_reports;
 CREATE POLICY "lost_reports_insert_any" ON public.lost_reports
   FOR INSERT WITH CHECK (true);
 
 -- UPDATE: solo el propietario puede actualizar su propio reporte.
+DROP POLICY IF EXISTS "lost_reports_update_own" ON public.lost_reports;
 CREATE POLICY "lost_reports_update_own" ON public.lost_reports
   FOR UPDATE USING (
     user_id = auth.uid()

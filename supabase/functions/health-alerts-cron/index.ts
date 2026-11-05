@@ -4,7 +4,7 @@
 // y notifica al Tutor por email (Resend) y por Web Push.
 //
 // Incremento 1: consulta + email. Incremento 2 (este archivo): filtro por
-// alert_preferences + envío real de Web Push (web-push-sender.ts) + pruning de
+// alert_preferences + envío real de Web Push (_shared/web-push.ts) + pruning de
 // suscripciones muertas. El email nunca falla el cron: es el canal de respaldo.
 
 import { createAdminClient } from '../_shared/supabase-client.ts'
@@ -16,7 +16,7 @@ import {
   shouldNotify,
   targetDueDates,
 } from './alerts.ts'
-import { isPushConfigured, sendPush } from './web-push-sender.ts'
+import { isPushConfigured, sendPush } from '../_shared/web-push.ts'
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
